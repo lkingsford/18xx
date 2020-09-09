@@ -3,6 +3,7 @@
 # frozen_string_literal: true
 
 require_relative '../config/game/g_1846'
+require_relative '../g_1846/share_pool'
 require_relative 'base'
 
 module Engine
@@ -18,18 +19,22 @@ module Engine
 
       load_from_json(Config::Game::G1846::JSON)
 
-      DEV_STAGE = :alpha
+      DEV_STAGE = :beta
 
       GAME_LOCATION = 'Midwest, USA'
       GAME_RULES_URL = 'https://s3-us-west-2.amazonaws.com/gmtwebsiteassets/1846/1846-RULES-GMT.pdf'
       GAME_DESIGNER = 'Thomas Lehmann'
       GAME_PUBLISHER = Publisher::INFO[:gmt_games]
+      GAME_INFO_URL = 'https://github.com/tobymao/18xx/wiki/1846'
 
       POOL_SHARE_DROP = :one
       SELL_AFTER = :p_any_operate
       SELL_BUY_ORDER = :sell_buy
       SELL_MOVEMENT = :left_block_pres
+      EBUY_OTHER_VALUE = false
+      EBUY_DEPOT_TRAIN_MUST_BE_CHEAPEST = false
       HOME_TOKEN_TIMING = :float
+      MUST_BUY_TRAIN = :always
 
       ORANGE_GROUP = [
         'Lake Shore Line',
@@ -48,6 +53,16 @@ module Engine
       TILE_COST = 20
       EVENTS_TEXT = Base::EVENTS_TEXT.merge('remove_tokens' => ['Remove Tokens', 'Remove private company tokens']).freeze
 
+      ASSIGNMENT_TOKENS = {
+        'MPC' => '/icons/1846/mpc_token.svg',
+        'SC' => '/icons/1846/sc_token.svg',
+      }.freeze
+
+      # Two tiles can be laid, only one upgrade
+      TILE_LAYS = [{ lay: true, upgrade: true }, { lay: true, upgrade: :not_if_upgraded }].freeze
+
+      IPO_NAME = 'Treasury'
+
       def init_companies(players)
         super + @players.size.times.map do |i|
           name = "Pass (#{i + 1})"
@@ -61,10 +76,13 @@ module Engine
         end
       end
 
+      def init_share_pool
+        Engine::G1846::SharePool.new(self)
+      end
+
       def cert_limit
-        num_players = @players.size
         num_corps = @corporations.size
-        case num_players
+        case @players.size
         when 3
           num_corps == 5 ? 14 : 11
         when 4
@@ -116,9 +134,9 @@ module Engine
           @round.active_step.companies.delete(company)
         end
         remove_from_group!(GREEN_GROUP, @corporations) do |corporation|
-          @round.place_home_token(corporation)
+          place_home_token(corporation)
           corporation.abilities(:reservation) do |ability|
-            corporation.remove_ability(ability.type)
+            corporation.remove_ability(ability)
           end
         end
 
@@ -134,6 +152,8 @@ module Engine
           hex = hex_by_id(minor.coordinates)
           hex.tile.cities[0].place_token(minor, minor.next_token, free: true)
         end
+
+        @last_action = nil
       end
 
       def remove_from_group!(group, entities)
@@ -165,10 +185,9 @@ module Engine
         end
       end
 
-      def revenue_for(route)
+      def revenue_for(route, stops)
         revenue = super
 
-        stops = route.stops
         east = stops.find { |stop| stop.groups.include?('E') }
         west = stops.find { |stop| stop.tile.label&.to_s == 'W' }
 
@@ -176,7 +195,7 @@ module Engine
 
         revenue += 30 if route.corporation.assigned?(meat) && stops.any? { |stop| stop.hex.assigned?(meat) }
 
-        steam = steam_boat.id
+        steam = steamboat.id
 
         if route.corporation.assigned?(steam) && (port = stops.map(&:hex).find { |hex| hex.assigned?(steam) })
           revenue += 20 * port.tile.icons.select { |icon| icon.name == 'port' }.size
@@ -199,8 +218,16 @@ module Engine
         @meat_packing ||= company_by_id('MPC')
       end
 
-      def steam_boat
-        @steam_boat ||= company_by_id('SC')
+      def steamboat
+        @steamboat ||= company_by_id('SC')
+      end
+
+      def michigan_central
+        @michigan_central ||= company_by_id('MC')
+      end
+
+      def ohio_indiana
+        @ohio_indiana ||= company_by_id('O&I')
       end
 
       def mail_contract
@@ -221,13 +248,32 @@ module Engine
           end
         end
 
+        check_special_tile_lay(action)
+
         @corporations.dup.each do |corporation|
           close_corporation(corporation) if corporation.share_price&.price&.zero?
         end
+
+        @last_action = action
       end
 
-      def close_corporation(corporation)
-        @log << "#{corporation.name} closes"
+      def special_tile_lay?(action)
+        (action.is_a?(Action::LayTile) &&
+         (action.entity == michigan_central || action.entity == ohio_indiana))
+      end
+
+      def check_special_tile_lay(action)
+        company = @last_action&.entity
+        return unless special_tile_lay?(@last_action)
+        return unless (ability = company.abilities(:tile_lay))
+        return if action.entity == company
+
+        company.remove_ability(ability)
+        @log << "#{company.name} forfeits second tile lay."
+      end
+
+      def close_corporation(corporation, quiet: false)
+        @log << "#{corporation.name} closes" unless quiet
 
         hexes.each do |hex|
           hex.tile.cities.each do |city|
@@ -238,17 +284,17 @@ module Engine
           end
         end
 
-        corporation.spend(corporation.cash, @bank)
+        corporation.spend(corporation.cash, @bank) if corporation.cash.positive?
         corporation.trains.each { |t| t.buyable = false }
         if corporation.companies.any?
           @log << "#{corporation.name}'s companies close: #{corporation.companies.map(&:sym).join(', ')}"
           corporation.companies.dup.each(&:close!)
         end
-        @round.skip_current_entity if @round.current_entity == corporation
+        @round.force_next_entity! if @round.current_entity == corporation
 
         if corporation.corporation?
-          corporation.share_holders.keys.each do |player|
-            player.shares_by_corporation.delete(corporation)
+          corporation.share_holders.keys.each do |share_holder|
+            share_holder.shares_by_corporation.delete(corporation)
           end
 
           @share_pool.shares_by_corporation.delete(corporation)
@@ -260,41 +306,147 @@ module Engine
       end
 
       def init_round
-        Round::G1846::Draft.new(self, [Step::G1846::DraftDistribution])
+        Round::Draft.new(self, [Step::G1846::DraftDistribution])
+      end
+
+      def priority_deal_player
+        return @players.first if @round.is_a?(Round::Draft)
+
+        super
+      end
+
+      def stock_round
+        Round::Stock.new(self, [
+          Step::DiscardTrain,
+          Step::G1846::Assign,
+          Step::G1846::BuySellParShares,
+        ])
       end
 
       def operating_round(round_num)
-        Round::G1846::Operating.new(@minors + @corporations, game: self, round_num: round_num)
+        Round::G1846::Operating.new(self, [
+          Step::G1846::Bankrupt,
+          Step::DiscardTrain,
+          Step::G1846::Assign,
+          Step::SpecialToken,
+          Step::SpecialTrack,
+          Step::G1846::BuyCompany,
+          Step::G1846::IssueShares,
+          Step::G1846::TrackAndToken,
+          Step::Route,
+          Step::G1846::Dividend,
+          Step::G1846::BuyTrain,
+          [Step::G1846::BuyCompany, blocks: true],
+        ], round_num: round_num)
+      end
+
+      def tile_cost(tile, entity)
+        [TILE_COST, super].max
       end
 
       def event_close_companies!
         super
 
         @minors.dup.each { |minor| close_corporation(minor) }
+
+        %w[D14 E17].each do |hex|
+          hex_by_id(hex).tile.icons.reject! { |icon| icon.name == 'lsl' }
+        end
       end
 
       def event_remove_tokens!
         removals = Hash.new { |h, k| h[k] = {} }
 
         @corporations.each do |corp|
-          corp.assignments.each do |company, _|
+          corp.assignments.dup.each do |company, _|
             removals[company][:corporation] = corp.name
             corp.remove_assignment!(company)
           end
         end
 
         @hexes.each do |hex|
-          hex.assignments.each do |company, _|
+          hex.assignments.dup.each do |company, _|
             removals[company][:hex] = hex.name
             hex.remove_assignment!(company)
+          end
+        end
+
+        %w[B8 C5 D6 D14 G19 I1].each do |hex|
+          hex_by_id(hex).tile.icons.reject! do |icon|
+            %w[meat port].include?(icon.name)
           end
         end
 
         removals.each do |company, removal|
           hex = removal[:hex]
           corp = removal[:corporation]
-          @log << "-- Event: #{corp}'s #{company} token removed from #{hex} --"
+          @log << "-- Event: #{corp}'s #{company_by_id(company).name} token removed from #{hex} --"
         end
+      end
+
+      def bankruptcy_limit_reached?
+        @players.reject(&:bankrupt).one?
+      end
+
+      def sellable_bundles(player, corporation)
+        return [] if corporation.receivership?
+
+        super
+      end
+
+      def emergency_issuable_bundles(corp)
+        return [] if @round.emergency_issued
+
+        min_train_price, max_train_price = @depot.min_depot_train.variants.map { |_, v| v[:price] }.minmax
+        return [] if corp.cash >= max_train_price
+
+        bundles = corp.bundles_for_corporation(corp)
+
+        num_issuable_shares = corp.num_player_shares - corp.num_market_shares
+        bundles.reject! { |bundle| bundle.num_shares > num_issuable_shares }
+
+        bundles.each do |bundle|
+          directions = [:left] * (1 + bundle.num_shares)
+          bundle.share_price = stock_market.find_share_price(corp, directions).price
+        end
+
+        # cannot issue shares that generate no money; this is errata from BGG
+        # and differs from the GMT rulebook
+        # https://boardgamegeek.com/thread/2094996/article/30495755#30495755
+        bundles.reject! { |b| b.price.zero? }
+
+        bundles.sort_by!(&:price)
+
+        # Cannot issue more shares than needed to buy the train from the bank
+        # (but may buy either variant)
+        # https://boardgamegeek.com/thread/1849992/article/26952925#26952925
+        train_buying_bundles = bundles.select { |b| (corp.cash + b.price) >= min_train_price }
+        if train_buying_bundles.any?
+          bundles = train_buying_bundles
+
+          index = bundles.find_index { |b| (corp.cash + b.price) >= max_train_price }
+          return bundles.take(index + 1) if index
+
+          return bundles
+        end
+
+        # if a train cannot be afforded, issue all possible shares
+        # https://boardgamegeek.com/thread/1849992/article/26939192#26939192
+        biggest_bundle = bundles.max_by(&:num_shares)
+        return [biggest_bundle] if biggest_bundle
+
+        []
+      end
+
+      def bundle_is_presidents_share_alone_in_pool?(bundle)
+        return unless bundle
+
+        bundle = bundle.to_bundle
+
+        bundle.corporation.receivership? &&
+          bundle.presidents_share &&
+          bundle.shares.one? &&
+          @share_pool.shares_of(bundle.corporation).one?
       end
     end
   end

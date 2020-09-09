@@ -7,7 +7,7 @@ module Engine
   class Train
     include Ownable
 
-    attr_accessor :obsolete, :operated
+    attr_accessor :obsolete, :operated, :events
     attr_reader :available_on, :name, :distance, :discount, :obsolete_on,
                 :rusts_on, :rusted, :sym, :variant, :variants
     attr_writer :buyable
@@ -26,6 +26,7 @@ module Engine
       @rusted = false
       @obsolete = false
       @operated = false
+      @events = (opts[:events] || []).select { |e| @index == (e[:when] || 0) }
       init_variants(opts[:variants])
     end
 
@@ -50,6 +51,10 @@ module Engine
 
       @variant = @variants[new_variant]
       @variant.each { |k, v| instance_variable_set("@#{k}", v) }
+    end
+
+    def names_to_prices
+      @variants.transform_values { |v| v[:price] }
     end
 
     def price(exchange_train = nil)

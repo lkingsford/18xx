@@ -6,11 +6,20 @@ module View
   module Game
     class Companies < Snabberb::Component
       needs :game
-      needs :user, default: nil
       needs :owner, default: nil
+      needs :show_hidden, default: false
 
       def render
-        companies = @owner.companies.flat_map do |c|
+        owned_companies = @owner.companies
+
+        if @show_hidden
+          round = @game.round
+          current_entity = round.current_entity
+          step = round.active_step
+          owned_companies = step.choices[current_entity]
+        end
+
+        companies = owned_companies.flat_map do |c|
           h(Company, company: c, layout: :table)
         end
 
@@ -18,7 +27,7 @@ module View
           style: {
             padding: '0 0.5rem',
             grid: @owner.player? ? 'auto / 4fr 1fr 1fr' : 'auto / 5fr 1fr',
-            gap: '0 0.2rem',
+            gap: '0 0.3rem',
           },
         }
 

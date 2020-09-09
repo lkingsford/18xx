@@ -6,7 +6,7 @@ module Engine
   module Step
     module G1846
       class DraftDistribution < Base
-        attr_reader :companies
+        attr_reader :companies, :choices
 
         ACTIONS = %w[bid].freeze
         ACTIONS_WITH_PASS = %w[bid pass].freeze
@@ -25,6 +25,20 @@ module Engine
           @companies.first(@draw_size)
         end
 
+        def may_purchase?(_company)
+          false
+        end
+
+        def may_choose?(_company)
+          true
+        end
+
+        def auctioning_company; end
+
+        def bids
+          {}
+        end
+
         def blank?(company)
           company.name.include?('Pass')
         end
@@ -39,6 +53,10 @@ module Engine
 
         def visible?
           only_one_company?
+        end
+
+        def players_visible?
+          false
         end
 
         def name
@@ -62,7 +80,7 @@ module Engine
         end
 
         def process_pass(action)
-          raise GameError, 'Cannot pass' unless only_one_company?
+          @game.game_error('Cannot pass') unless only_one_company?
 
           company = @companies[0]
           old_value = company.min_bid
@@ -71,8 +89,15 @@ module Engine
           @log << "#{company.name} price decreases from #{@game.format_currency(old_value)} "\
             "to #{@game.format_currency(new_value)}"
 
-          @round.next_index!
-          return if new_value.positive?
+          @round.next_entity_index!
+          case company.id
+          when 'Big 4'
+            return if new_value >= 60
+          when 'MS'
+            return if new_value >= 80
+          else
+            return if new_value.positive?
+          end
 
           @companies.clear
           @choices[action.entity] << company
@@ -83,25 +108,26 @@ module Engine
         def process_bid(action)
           company = action.company
           @choices[action.entity] << company
-
+          company.owner = action.entity
           discarded = available.sort_by { @game.rand }
           discarded.delete(company)
 
           @companies -= available
           @log << "#{action.entity.name} chooses a company"
           @companies.concat(discarded)
-          @round.next_index!
+          @round.next_entity_index!
           action_finalized
         end
 
         def action_finalized
           return unless finished?
 
-          @round.reset_index!
+          @round.reset_entity_index!
 
           @choices.each do |player, companies|
             companies.each do |company|
               if blank?(company)
+                company.owner = nil
                 @log << "#{player.name} chose #{company.name}"
               else
                 company.owner = player
@@ -133,6 +159,12 @@ module Engine
             end
 
           @game.bank.spend(company.value, minor) if minor
+        end
+
+        def committed_cash(player, show_hidden = false)
+          return 0 unless show_hidden
+
+          choices[player].sum(&:min_bid)
         end
       end
     end

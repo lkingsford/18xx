@@ -7,7 +7,8 @@ module Engine
   class Share
     include Ownable
 
-    attr_reader :corporation, :percent, :president
+    attr_accessor :percent
+    attr_reader :corporation, :president
 
     def initialize(corporation, owner: nil, president: false, percent: 10, index: 0)
       @corporation = corporation
@@ -22,7 +23,7 @@ module Engine
     end
 
     def num_shares
-      @percent / 10
+      @percent / corporation.share_percent
     end
 
     def price_per_share

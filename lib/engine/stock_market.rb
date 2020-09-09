@@ -15,10 +15,14 @@ module Engine
                                        c_index,
                                        unlimited_colors,
                                        multiple_buy_colors: multiple_buy_colors)
-          @par_prices << price if price&.can_par
+          @par_prices << price if price&.can_par?
           price
         end
       end
+      @par_prices.sort_by! do |p|
+        r, c = p.coordinates
+        [p.price, c, r]
+      end.reverse!
     end
 
     def one_d?
@@ -38,7 +42,7 @@ module Engine
         c += 1
         move(corporation, r, c)
       else
-        move_up(corporation)
+        move_up(corporation) unless one_d?
       end
     end
 
@@ -65,41 +69,53 @@ module Engine
         c -= 1
         move(corporation, r, c)
       else
-        move_down(corporation)
+        move_down(corporation) unless one_d?
       end
     end
 
-    def find_share_price(corporation, direction)
+    def find_share_price(corporation, directions)
       r, c = corporation.share_price.coordinates
-      case direction
-      when :left
-        c -= 1
-        share_price(r, c) || share_price(r, c + 1)
-      when :right
-        c += 1
-        share_price(r, c) || share_price(r, c - 1)
-      when :down
-        r -= 1
-        share_price(r, c) || share_price(r + 1, c)
-      when :up
-        r += 1
-        share_price(r, c) || share_price(r - 1, c)
+
+      prices = [share_price(r, c)]
+
+      Array(directions).each do |direction|
+        case direction
+        when :left
+          c -= 1 if c.positive?
+        when :right
+          c += 1
+        when :down
+          r -= 1 if r.positive?
+        when :up
+          r += 1
+        end
+        price = share_price(r, c)
+        break unless price
+
+        prices << price
       end
+      prices.last
+    end
+
+    def max_reached?
+      @max_reached
+    end
+
+    def move(corporation, row, column, force: false)
+      share_price = share_price(row, column)
+      return if share_price == corporation.share_price
+      return if !force && !share_price.normal_movement?
+
+      corporation.share_price.corporations.delete(corporation)
+      corporation.share_price = share_price
+      @max_reached = true if share_price.end_game_trigger?
+      share_price.corporations << corporation
     end
 
     private
 
     def share_price(row, column)
       @market[row]&.[](column)
-    end
-
-    def move(corporation, row, column)
-      share_price = share_price(row, column)
-      return if share_price == corporation.share_price
-
-      corporation.share_price.corporations.delete(corporation)
-      corporation.share_price = share_price
-      share_price.corporations << corporation
     end
   end
 end

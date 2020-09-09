@@ -8,23 +8,21 @@ module View
     class DiscardTrains < Snabberb::Component
       include Actionable
 
-      needs :corporations
-
       def render
         block_props = {
           style: {
             display: 'inline-block',
-            'vertical-align': 'top',
+            verticalAlign: 'top',
           },
         }
-        overflow = @corporations.map do |corporation|
+        overflow = @game.active_step.crowded_corps.map do |corporation|
           trains = corporation.trains.map do |train|
             train_props = {
               style: {
                 display: 'inline-block',
                 cursor: 'pointer',
                 border: 'solid 1px gainsboro',
-                'padding': '0.5rem',
+                padding: '0.5rem',
               },
               on: { click: -> { process_action(Engine::Action::DiscardTrain.new(corporation, train: train)) } },
             }
@@ -39,8 +37,7 @@ module View
         end
 
         h(:div, [
-          h(:div, { style: { 'margin-bottom': '1rem', 'font-weight': 'bold' } }, 'Discard Trains'),
-          h(UndoAndPass, pass: false),
+          h(:div, { style: { marginBottom: '1rem', fontWeight: 'bold' } }, 'Discard Trains'),
           *overflow,
         ])
       end

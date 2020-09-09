@@ -17,6 +17,10 @@ module Engine
         ACTIONS
       end
 
+      def active?
+        @round.company_pending_par
+      end
+
       def active_entities
         [@round.company_pending_par&.owner].compact
       end
@@ -31,6 +35,12 @@ module Engine
 
       def company_pending_par
         @round.company_pending_par
+      end
+
+      def get_par_prices(_entity, _corp)
+        @game
+          .stock_market
+          .par_prices
       end
     end
   end

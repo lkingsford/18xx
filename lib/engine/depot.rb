@@ -19,11 +19,15 @@ module Engine
       train = @upcoming.first
       @game.log << "-- Event: A #{train.name} train exports --"
       remove_train(train)
-      @game.phase.process_action(Engine::Action::BuyTrain.new(
-        nil,
-        train: train,
-        price: 0,
-      ))
+      @game.phase.buying_train!(nil, train)
+    end
+
+    def export_all!(name)
+      @game.log << "-- Event: All #{name} trains are exported --"
+      while (train = @upcoming.first).name == name
+        remove_train(train)
+        @game.phase.buying_train!(nil, train)
+      end
     end
 
     def reclaim_train(train)
@@ -31,7 +35,7 @@ module Engine
 
       train.owner.remove_train(train)
       train.owner = self
-      @discarded << train if @game.class::DISCARDED_TRAINS == :discard
+      @discarded << train if @game.class::DISCARDED_TRAINS == :discard && !train.obsolete
     end
 
     def min_price(corporation)
@@ -43,7 +47,16 @@ module Engine
     end
 
     def min_depot_price
-      min_depot_train.price
+      min_depot_train.variants.map { |_, v| v[:price] }.min
+    end
+
+    def max_depot_price
+      depot_trains.max_by(&:price).variants.map { |_, v| v[:price] }.max
+    end
+
+    def unshift_train(train)
+      train.owner = self
+      @upcoming.unshift(train)
     end
 
     def remove_train(train)

@@ -27,32 +27,37 @@ module View
         @rows = @hexes.map(&:y).uniq.sort.map(&:next)
         @layout = @game.layout
 
-        @game.special.current_entity = @selected_company
-
-        round =
-          if @game.special.map_abilities
-            @game.special
-          elsif @game.round.operating?
-            @game.round
-          end
-
+        step = @game.round.active_step(@selected_company)
+        current_entity = @selected_company || step&.current_entity
+        actions = step&.actions(current_entity) || []
         # move the selected hex to the back so it renders highest in z space
         selected_hex = @tile_selector&.hex
         @hexes << @hexes.delete(selected_hex) if @hexes.include?(selected_hex)
 
         @hexes.map! do |hex|
-          h(Hex, hex: hex, round: round, opacity: @opacity)
+          clickable = step&.available_hex(current_entity, hex)
+          opacity = clickable ? 1.0 : 0.5
+          h(
+            Hex,
+            hex: hex,
+            opacity: @opacity || opacity,
+            entity: current_entity,
+            clickable: clickable,
+            actions: actions,
+          )
         end
 
         children = [render_map]
 
-        if @tile_selector
+        if current_entity && @tile_selector
           left = (@tile_selector.x + map_x) * SCALE
           top = (@tile_selector.y + map_y) * SCALE
           selector =
             if @tile_selector.is_a?(Lib::TokenSelector)
               # 1882
               h(TokenSelector)
+            elsif @tile_selector.role != :map
+              # Tile selector not for the map
             elsif @tile_selector.hex.tile != @tile_selector.tile
               h(TileConfirmation)
             else
@@ -70,9 +75,25 @@ module View
                 top = height - TileSelector::DROP_SHADOW_SIZE - distance
               end
 
-              tiles = round.upgradeable_tiles(@tile_selector.hex)
+              tiles = step.upgradeable_tiles(current_entity, @tile_selector.hex)
+              all_upgrades = @game.all_potential_upgrades(@tile_selector.hex.tile)
 
-              h(TileSelector, layout: @layout, tiles: tiles)
+              select_tiles = all_upgrades.map do |tile|
+                real_tile = tiles.find { |t| t.name == tile.name }
+                if real_tile
+                  tiles.delete(real_tile)
+                  [real_tile, nil]
+                elsif !@game.phase.tiles.include?(tile.color)
+                  [tile, 'Later Phase']
+                elsif @game.tiles.none? { |t| t.name == tile.name }
+                  [tile, 'None Left']
+                end
+              end.compact
+
+              # Add tiles that aren't part of all_upgrades (Mitsubishi ferry)
+              select_tiles.append(*tiles.map { |t| [t, nil] })
+
+              h(TileSelector, layout: @layout, tiles: select_tiles, actions: actions)
             end
 
           # Move the position to the middle of the hex

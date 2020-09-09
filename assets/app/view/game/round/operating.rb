@@ -4,11 +4,12 @@ require 'view/game/buy_companies'
 require 'view/game/buy_trains'
 require 'view/game/company'
 require 'view/game/corporation'
+require 'view/game/player'
 require 'view/game/dividend'
 require 'view/game/issue_shares'
 require 'view/game/map'
-require 'view/game/undo_and_pass'
 require 'view/game/route_selector'
+require 'view/game/cash_crisis'
 
 module View
   module Game
@@ -16,36 +17,48 @@ module View
       class Operating < Snabberb::Component
         needs :game
 
-        ABILITIES = %i[tile_lay teleport assign_hexes token].freeze
-
         def render
           round = @game.round
+          @step = round.active_step
+          entity = @step.current_entity
+          @current_actions = round.actions_for(entity)
 
-          action =
-            case round.step
-            when :home_token
-              h(UndoAndPass, pass: false)
-            when :company, :track, :token, :token_or_track
-              h(UndoAndPass)
-            when :route
-              h(RouteSelector)
-            when :dividend
-              h(Dividend)
-            when :train
-              h(BuyTrains)
-            when :issue
-              h(IssueShares)
+          entity = entity.owner if entity.company? && !round.active_entities.one?
+
+          left = []
+          left << h(RouteSelector) if @current_actions.include?('run_routes')
+          left << h(Dividend) if @current_actions.include?('dividend')
+
+          if @current_actions.include?('buy_train')
+            left << h(IssueShares) if @current_actions.include?('sell_shares')
+            left << h(BuyTrains)
+          elsif @current_actions.include?('sell_shares') && entity.player?
+            left << h(CashCrisis)
+          end
+          left << h(IssueShares) if @current_actions.include?('buy_shares')
+          left << h(Loans, corporation: entity) if (%w[take_loan payoff_loan] & @current_actions).any?
+
+          if entity.player?
+            left << h(Player, player: entity, game: @game)
+          elsif entity.corporation? || entity.minor?
+            left << h(Corporation, corporation: entity)
+          elsif (company = entity).company?
+            left << h(Company, company: company)
+
+            if company.abilities(:assign_corporation)
+              props = {
+                style: {
+                  display: 'inline-block',
+                  verticalAlign: 'top',
+                },
+              }
+
+              @step.assignable_corporations(company).each do |corporation|
+                component = View::Game::Corporation.new(@root, corporation: corporation, selected_company: company)
+                component.store(:selected_company, company, skip: true)
+                left << h(:div, props, [component.render])
+              end
             end
-
-          action = h(UndoAndPass, pass: false) if round.ambiguous_token
-
-          left = [action]
-          corporation = round.current_entity
-          left << h(Corporation, corporation: corporation)
-          corporation.owner.companies.each do |c|
-            next if (c.all_abilities.map(&:type) & ABILITIES).empty?
-
-            left << h(Company, display: 'block', company: c, game: @game)
           end
 
           div_props = {
@@ -54,7 +67,7 @@ module View
             },
           }
           right = [h(Map, game: @game)]
-          right << h(:div, div_props, [h(BuyCompanies, limit_width: true)]) if round.can_buy_companies?
+          right << h(:div, div_props, [h(BuyCompanies, limit_width: true)]) if @current_actions.include?('buy_company')
 
           left_props = {
             style: {

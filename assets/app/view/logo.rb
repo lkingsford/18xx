@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'lib/color'
-
 module View
   class Logo < Snabberb::Component
     needs :user, default: nil, store: true
@@ -11,7 +9,6 @@ module View
         style: {
           margin: '0',
           fontSize: '1rem',
-          lineHeight: '3rem',
           whiteSpace: 'nowrap',
         },
       }
@@ -19,8 +16,8 @@ module View
         attrs: { href: '/', title: '18xx.Games' },
         style: {
           color: 'currentColor',
-          'font-weight': 'bold',
-          'text-decoration': 'none',
+          fontWeight: 'bold',
+          textDecoration: 'none',
         },
       }
       logo_color = @user&.dig(:settings, :red_logo) ? 'red' : 'yellow'
@@ -29,16 +26,17 @@ module View
           display: 'inline-block',
           height: '3rem',
           width: '2.5rem',
+          lineHeight: '3rem',
           background: "url(/images/logo_polygon_#{logo_color}.svg) left/2.5rem no-repeat",
-          color: @user&.dig(:settings, :red_logo) ? '#ffffff' : '#000000',
-          'text-align': 'center',
+          color: logo_color == 'red' ? '#ffffff' : '#000000',
+          textAlign: 'center',
         },
       }
 
       h('h1#logo', h1_props, [
         h(:a, a_props, [
           h(:span, logo_props, '18xx'),
-          h(:span, '.Games'),
+          h(:span, ' . Games'),
         ]),
       ])
     end

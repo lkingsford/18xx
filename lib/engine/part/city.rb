@@ -9,9 +9,9 @@ module Engine
       attr_accessor :reservations
       attr_reader :slots, :tokens
 
-      def initialize(revenue, slots = 1, groups = nil, hide = false, visit_cost = nil)
-        super(revenue, groups, hide, visit_cost)
-        @slots = slots.to_i
+      def initialize(revenue, **opts)
+        super
+        @slots = (opts[:slots] || 1).to_i
         @tokens = Array.new(@slots)
         @reservations = []
       end
@@ -89,8 +89,7 @@ module Engine
       end
 
       def exchange_token(token)
-        token.used = true
-        token.city = self
+        token.place(self)
         @tokens[get_slot(token.corporation)] = token
       end
     end

@@ -2,6 +2,7 @@
 
 require_relative 'abilities'
 require_relative 'assignable'
+require_relative 'entity'
 require_relative 'operator'
 require_relative 'ownable'
 require_relative 'passer'
@@ -14,23 +15,30 @@ module Engine
   class Corporation
     include Abilities
     include Assignable
+    include Entity
     include Operator
     include Ownable
     include Passer
     include ShareHolder
     include Spender
 
-    attr_accessor :ipoed, :share_price
+    attr_accessor :ipoed, :share_price, :par_via_exchange
     attr_reader :capitalization, :companies, :min_price, :name, :full_name
     attr_writer :par_price
+
+    SHARES = ([20] + Array.new(8, 10)).freeze
 
     def initialize(sym:, name:, **opts)
       @name = sym
       @full_name = name
-      [
-        Share.new(self, president: true, percent: 20),
-        *8.times.map { |index| Share.new(self, percent: 10, index: index + 1) },
-      ].each { |share| shares_by_corporation[self] << share }
+
+      shares = (opts[:shares] || SHARES).map.with_index do |percent, index|
+        Share.new(self, president: index.zero?, percent: percent, index: index)
+      end
+
+      shares.each { |share| shares_by_corporation[self] << share }
+      @presidents_share = shares.first
+      @second_share = shares[1]
 
       @share_price = nil
       @par_price = nil
@@ -40,9 +48,11 @@ module Engine
       @cash = 0
       @capitalization = opts[:capitalization] || :full
       @float_percent = opts[:float_percent] || 60
+      @max_ownership_percent = opts[:max_ownership_percent] || 60
       @min_price = opts[:min_price]
       @always_market_price = opts[:always_market_price] || false
       @needs_token_to_par = opts[:needs_token_to_par] || false
+      @par_via_exchange = nil
 
       init_abilities(opts[:abilities])
       init_operator(opts)
@@ -66,14 +76,19 @@ module Engine
       @share_price ? @share_price.buy_multiple? : false
     end
 
-    def can_par?
+    def can_par?(entity)
+      return false if @par_via_exchange && @par_via_exchange.owner != entity
       return false if @needs_token_to_par && @tokens.empty?
 
-      true
+      !@ipoed
     end
 
     def par_price
       @always_market_price ? @share_price : @par_price
+    end
+
+    def total_shares
+      100 / share_percent
     end
 
     def num_ipo_shares
@@ -81,15 +96,19 @@ module Engine
     end
 
     def num_player_shares
-      share_holders.values.sum / 10
+      player_share_holders.values.sum / total_shares
     end
 
     def num_market_shares
-      10 - num_ipo_shares - num_player_shares
+      share_holders.select { |s_h, _| s_h.share_pool? }.values.sum / total_shares
     end
 
     def share_holders
       @share_holders ||= Hash.new(0)
+    end
+
+    def player_share_holders
+      share_holders.select { |s_h, _| s_h.player? }
     end
 
     def id
@@ -110,20 +129,12 @@ module Engine
       percent_of(self) - (100 - @float_percent)
     end
 
-    def player?
-      false
-    end
-
-    def company?
-      false
-    end
-
     def corporation?
       true
     end
 
-    def minor?
-      false
+    def receivership?
+      owner&.share_pool?
     end
 
     def inspect
@@ -133,15 +144,21 @@ module Engine
     # Is it legal to hold percent shares in this corporation?
     def holding_ok?(share_holder, extra_percent = 0)
       percent = share_holder.percent_of(self) + extra_percent
-      %i[orange brown].include?(@share_price&.color) || percent <= 60
+      %i[orange brown].include?(@share_price&.color) || percent <= @max_ownership_percent
     end
 
     def all_abilities
       all = @companies.flat_map(&:all_abilities)
-      @abilities.each do |type, _|
-        abilities(type) { |ability| all << ability }
+      @abilities.each do |ability|
+        abilities(ability.type) { |a| all << a }
       end
       all
+    end
+
+    def remove_ability(ability)
+      return super if ability.owner == self
+
+      @companies.each { |company| company.remove_ability(ability) }
     end
 
     def abilities(type, time = nil)
@@ -160,6 +177,32 @@ module Engine
       end
 
       abilities
+    end
+
+    def available_share
+      shares_by_corporation[self].find { |share| !share.president }
+    end
+
+    def presidents_percent
+      @presidents_share.percent
+    end
+
+    def share_percent
+      @second_share&.percent || presidents_percent / 2
+    end
+
+    def transfer(ownable_type, to)
+      ownables = send(ownable_type)
+      to_ownables = to.send(ownable_type)
+
+      ownables.each do |ownable|
+        ownable.owner = to
+        to_ownables << ownable
+      end
+
+      transferred = ownables.dup
+      ownables.clear
+      transferred
     end
   end
 end

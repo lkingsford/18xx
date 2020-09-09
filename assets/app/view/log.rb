@@ -1,8 +1,11 @@
 # frozen_string_literal: true
 
+require 'lib/settings'
+
 module View
   class Log < Snabberb::Component
-    include Lib::Color
+    include Lib::Settings
+
     needs :log
     needs :negative_pad, default: false
     needs :follow_scroll, default: true, store: true
@@ -32,9 +35,9 @@ module View
         style: {
           overflow: 'auto',
           padding: '0.5rem',
-          'background-color': color_for(:bg2),
+          backgroundColor: color_for(:bg2),
           color: color_for(:font2),
-          'word-break': 'break-word',
+          wordBreak: 'break-word',
         },
       }
 
@@ -42,14 +45,19 @@ module View
         props[:style][:padding] = '0.5rem 2vmin'
         props[:style][:margin] = '0 -2vmin'
       else
-        props[:style]['box-sizing'] = 'border-box'
+        props[:style][:boxSizing] = 'border-box'
       end
 
-      lines = @log.map do |line|
+      lines = @log.each_with_index.map do |line, index|
+        line_props = { style: {} }
         if line.is_a?(String)
-          h(:div, line)
+          if line.start_with?('--')
+            line_props[:style][:fontWeight] = 'bold'
+            line_props[:style][:marginTop] = '0.5em' if index.positive?
+          end
+          h(:div, line_props, line)
         elsif line.is_a?(Engine::Action::Message)
-          h(:div, { style: { 'font-weight': 'bold' } }, "#{line.entity.name}: #{line.message}")
+          h(:div, { style: { fontWeight: 'bold' } }, "#{line.entity.name}: #{line.message}")
         end
       end
 

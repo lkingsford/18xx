@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require_relative '../config/game/g_18_chesapeake'
+require_relative '../g_18_chesapeake/share_pool'
+require_relative '../round/g_18_chesapeake/stock'
 require_relative 'base'
 
 module Engine
@@ -22,8 +24,13 @@ module Engine
       GAME_RULES_URL = 'https://www.dropbox.com/s/x0dsehrxqr1tl6w/18Chesapeake_Rules.pdf'
       GAME_DESIGNER = 'Scott Petersen'
       GAME_PUBLISHER = Publisher::INFO[:all_aboard_games]
+      GAME_INFO_URL = 'https://github.com/tobymao/18xx/wiki/18Chesapeake'
 
       SELL_BUY_ORDER = :sell_buy
+
+      def init_share_pool
+        Engine::G18Chesapeake::SharePool.new(self)
+      end
 
       def action_processed(action)
         case action
@@ -33,29 +40,57 @@ module Engine
         end
       end
 
+      def stock_round
+        Round::G18Chesapeake::Stock.new(self, [
+          Step::DiscardTrain,
+          Step::BuySellParShares,
+        ])
+      end
+
+      def operating_round(round_num)
+        Round::Operating.new(self, [
+          Step::Bankrupt,
+          Step::DiscardTrain,
+          Step::SpecialTrack,
+          Step::BuyCompany,
+          Step::Track,
+          Step::Token,
+          Step::Route,
+          Step::Dividend,
+          Step::BuyTrain,
+          [Step::BuyCompany, blocks: true],
+        ], round_num: round_num)
+      end
+
       def setup
         cornelius.add_ability(Ability::Close.new(
           type: :close,
           when: :train,
           corporation: cornelius.abilities(:share).share.corporation.name,
         ))
+
+        return unless players.size == 2
+
+        cv_corporation = cornelius.abilities(:share).share.corporation
+
+        @corporations.each do |corporation|
+          next if corporation == cv_corporation
+
+          presidents_share = corporation.shares_by_corporation[corporation].first
+          presidents_share.percent = 30
+
+          final_share = corporation.shares_by_corporation[corporation].last
+          @share_pool.transfer_shares(final_share.to_bundle, @bank)
+        end
       end
 
       def check_special_tile_lay(action, company)
         company.abilities(:tile_lay) do |ability|
           hexes = ability.hexes
           next unless hexes.include?(action.hex.id)
-
-          if action.entity == company && ability.count.zero?
-            paths = hexes.flat_map do |hex_id|
-              hex_by_id(hex_id).tile.paths
-            end.uniq
-            raise GameError, 'Paths must be connected' if paths.size != paths[0].select(paths).size
-          end
-
           next if company.closed? || action.entity == company
 
-          company.remove_ability(:tile_lay)
+          company.remove_ability(ability)
           @log << "#{company.name} loses the ability to lay #{hexes}"
         end
       end
@@ -74,6 +109,16 @@ module Engine
 
       def or_set_finished
         depot.export! if %w[2 3 4].include?(@depot.upcoming.first.name)
+      end
+
+      def float_corporation(corporation)
+        super
+
+        return unless players.size == 2
+
+        @log << "#{corporation.name}'s remaining shares are transferred to the Market"
+        bundle = ShareBundle.new(corporation.shares_of(corporation))
+        @share_pool.transfer_shares(bundle, @share_pool)
       end
     end
   end

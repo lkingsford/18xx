@@ -1,14 +1,17 @@
 # frozen_string_literal: true
 
+require 'lib/settings'
 require 'view/game/companies'
 
 module View
   module Game
     class Player < Snabberb::Component
-      include Lib::Color
+      include Lib::Settings
+
       needs :player
       needs :game
       needs :display, default: 'inline-block'
+      needs :show_hidden, default: false
 
       def render
         card_style = {
@@ -22,7 +25,9 @@ module View
           render_body,
         ]
 
-        divs << h(Companies, owner: @player, game: @game) if @player.companies.any?
+        if @player.companies.any? || @show_hidden
+          divs << h(Companies, owner: @player, game: @game, show_hidden: @show_hidden)
+        end
 
         h('div.player.card', { style: card_style }, divs)
       end
@@ -76,17 +81,18 @@ module View
           ]),
         ]
 
-        if @game.round.auction?
+        if @game.active_step&.current_actions&.include?('bid')
+          committed = @game.active_step.committed_cash(@player, @show_hidden)
           trs.concat([
             h(:tr, [
               h(:td, 'Committed'),
-              h('td.right', @game.format_currency(@game.round.committed_cash(@player))),
+              h('td.right', @game.format_currency(committed)),
             ]),
             h(:tr, [
               h(:td, 'Available'),
-              h('td.right', @game.format_currency(@player.cash - @game.round.committed_cash(@player))),
+              h('td.right', @game.format_currency(@player.cash - committed)),
             ]),
-          ])
+          ]) if committed.positive?
         end
 
         trs.concat([
@@ -105,8 +111,16 @@ module View
         ])
 
         if @player == @game.priority_deal_player
+          props = {
+            attrs: { colspan: '2' },
+            style: {
+              background: 'salmon',
+              color: 'black',
+              borderRadius: '3px',
+            },
+          }
           trs << h(:tr, [
-            h('td.center.italic', { attrs: { colspan: '2' } }, 'Priority Deal'),
+            h('td.center.italic', props, 'Priority Deal'),
           ])
         end
 

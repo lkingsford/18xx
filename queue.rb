@@ -32,11 +32,11 @@ MessageBus.subscribe '/turn', -1 do |msg|
     .map(&:user_id)
 
   users = users.reject do |user|
-    email_sent = user.settings['email_sent'] || 0
+    next true if user.settings['notifications'] == false
+    next false if data['force']
 
-    connected.include?(user.id) ||
-      user.settings['notifications'] == false ||
-      email_sent > minute_ago.to_i
+    email_sent = user.settings['email_sent'] || 0
+    connected.include?(user.id) || email_sent > minute_ago.to_i
   end
 
   next if users.empty?
@@ -53,6 +53,8 @@ MessageBus.subscribe '/turn', -1 do |msg|
     Mail.send(user, "18xx.games Game: #{game.title} - #{game.id} - #{data['type']}", html)
     LOGGER.info("mail sent for game: #{game.id} to user: #{user.id}")
   end
+rescue Exception => e # rubocop:disable Lint/RescueException
+  puts e
 end
 
 sleep

@@ -13,11 +13,15 @@ module Engine
       end
 
       def paths
-        @paths ||= @tile.paths.select { |p| p.node == self }
+        @paths ||= @tile.paths.select { |p| p.nodes.any? { |n| n == self } }
       end
 
       def exits
         @exits ||= paths.flat_map(&:exits)
+      end
+
+      def rect?
+        false
       end
 
       def select(paths, corporation: nil)
@@ -39,16 +43,17 @@ module Engine
         paths.each do |node_path|
           node_path.walk(visited: visited_paths, on: on) do |path, vp|
             yield path
-            next unless (next_node = path.node)
-            next if next_node == self
-            next if corporation && next_node.blocks?(corporation)
+            path.nodes.each do |next_node|
+              next if next_node == self
+              next if corporation && next_node.blocks?(corporation)
 
-            next_node.walk(
-              visited: visited,
-              on: on,
-              corporation: corporation,
-              visited_paths: visited_paths.merge(vp),
-            ) { |p| yield p }
+              next_node.walk(
+                visited: visited,
+                on: on,
+                corporation: corporation,
+                visited_paths: visited_paths.merge(vp),
+              ) { |p| yield p }
+            end
           end
         end
       end

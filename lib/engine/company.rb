@@ -1,11 +1,13 @@
 # frozen_string_literal: true
 
 require_relative 'abilities'
+require_relative 'entity'
 require_relative 'ownable'
 
 module Engine
   class Company
     include Abilities
+    include Entity
     include Ownable
 
     attr_accessor :desc, :max_price, :min_price, :revenue, :discount
@@ -36,7 +38,7 @@ module Engine
     def close!
       @closed = true
 
-      @abilities.keys.each { |a| remove_ability(a) }
+      all_abilities.each { |a| remove_ability(a) }
       return unless owner
 
       owner.companies.delete(self)
@@ -47,20 +49,14 @@ module Engine
       @closed
     end
 
-    def player?
-      false
-    end
-
     def company?
       true
     end
 
-    def corporation?
-      false
-    end
-
-    def find_token_by_type(_token_type)
+    def find_token_by_type(token_type)
       raise GameError, "#{name} does not have a token" unless abilities(:token)
+
+      return @owner.find_token_by_type(token_type) if abilities(:token).from_owner
 
       Token.new(@owner)
     end

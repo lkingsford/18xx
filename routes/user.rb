@@ -16,10 +16,13 @@ class Api
 
         # POST '/api/user/'
         r.is do
+          halt(400, 'Invalid email address') unless /^[^@\s]+@[^@\s]+\.[^@\s]+$/.match?(r['email'])
+
           params = {
             name: r['name'],
             email: r['email'],
             password: r['password'],
+            settings: { notifications: r['notifications'] },
           }.reject { |_, v| v.empty? }
 
           login_user(User.create(params))
@@ -77,6 +80,13 @@ class Api
         # POST '/api/user/refresh'
         r.is 'refresh' do
           login_user(user, new_session: false)
+        end
+
+        # POST '/api/user/login'
+        r.is 'delete' do
+          Game.where(id: user.game_users.map(&:game_id)).delete
+          user.destroy
+          {}
         end
       end
     end

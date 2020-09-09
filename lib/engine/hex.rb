@@ -7,7 +7,8 @@ module Engine
   class Hex
     include Assignable
 
-    attr_reader :connections, :coordinates, :layout, :neighbors, :tile, :x, :y, :location_name, :original_tile
+    attr_accessor :x, :y
+    attr_reader :connections, :coordinates, :layout, :neighbors, :tile, :location_name, :original_tile
 
     DIRECTIONS = {
       flat: {
@@ -124,6 +125,8 @@ module Engine
 
         new_city.reservations.concat(old_city.reservations)
         old_city.reservations.clear
+
+        new_city.groups = old_city.groups
       end
 
       # when upgrading, preserve tokens on previous tile (must be handled after
@@ -147,7 +150,7 @@ module Engine
       @tile.icons = @tile.icons.select(&:preprinted)
 
       tile.reservations = @tile.reservations
-      @tile.reservations.clear
+      @tile.reservations = []
 
       tile.borders.concat(@tile.borders)
       @tile.borders.clear
@@ -163,6 +166,15 @@ module Engine
       @tile = tile
       clear_cache
       connect!
+    end
+
+    def lay_downgrade(tile)
+      lay(tile)
+      neighbors.each do |_edge, neighbor|
+        neighbor.connections.clear
+        neighbor.connect!
+      end
+      tile.restore_borders
     end
 
     def connect!

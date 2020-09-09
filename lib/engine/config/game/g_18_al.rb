@@ -14,7 +14,7 @@ module Engine
    "currencyFormatStr":"$%d",
    "bankCash":8000,
    "certLimit":{
-      "3":25,
+      "3":15,
       "4":12,
       "5":10
    },
@@ -97,7 +97,8 @@ module Engine
       "441a":1,
       "442a":1,
       "443a":1,
-      "444a":2
+      "444b":1,
+      "444m":1
    },
    "market":[
       [
@@ -116,7 +117,7 @@ module Engine
          "215",
          "240",
          "270",
-         "300"
+         "300e"
       ],
       [
          "55",
@@ -201,28 +202,75 @@ module Engine
          "name":"South & North Alabama Railroad",
          "value":40,
          "revenue":10,
-         "desc":"Comes with a Warrior Coal Field token. The owning corporation may place it in Gadsden Anniston Oxmoor Birmingham or Tuscaloosa provided that the corporation owns a train that can reach that city on existing track. Placing the token does NOT close the S&NA. The token makes that city worth an extra $10 (when run to) for that corporation only. The token remains on the board until the first 6 Train is purchased."
+         "desc":"Owning corporation may place the Warrior Coal Field token in one of the city hexes with a mining symbol (Gadsden, Anniston, Oxmoor, Birmingham, or Tuscaloosa) provided that the corporation can reach the city with a route that is in the range of a train owned by the corporation (i.e. not an infinite route). Placing the token does not close the company. The owning corporation adds 10 to revenue for all trains whose route includes the city with the token. The token is removed from the game at the beginning of phase 6.",
+         "abilities": [
+            {
+               "type": "assign_hexes",
+               "hexes": [
+                 "H3",
+                 "G4",
+                 "H5",
+                 "G6",
+                 "E6"
+               ],
+               "count": 1,
+               "owner_type": "corporation"
+            }
+         ]
       },
       {
          "sym":"BLC",
          "name":"Brown & Sons Lumber Co.",
          "value":70,
          "revenue":15,
-         "desc":"Owning corporation may lay the Lumber Terminal track tile (number 445) in an empty swamp hex. It need not be connected to an existing station of the corporation.  The corporation need not pay the $20 cost of the swamp hex.  And it does not count as the corporation's one tile lay per turn.  (But it still must be laid during the tile-laying step of the corporation's turn). Laying the tile does not close the B&SLC. The Lumber Terminal tile is permanent, and cannot be upgraded."
+         "desc":"Owning corporation may during the track laying step lay the Lumber Terminal track tile (# 445) in an empty swamp hex, which need not be connected to the corporation's station(s). The tile is free and does not count as the corporation's one tile lay per turn. Laying the tile does not close the company. The tile is permanent and cannot be upgraded.",
+         "abilities": [
+             {
+               "type": "tile_lay",
+               "free":true,
+               "owner_type": "corporation",
+               "tiles": [
+                  "445"
+               ],
+               "hexes": [
+                 "G2",
+                 "M2",
+                 "O4",
+                 "N5",
+                 "P5"
+               ],
+               "count": 1,
+               "when": "track"
+             }
+         ]
       },
       {
          "sym":"M&C",
          "name":"Memphis & Charleston Railroad",
          "value":100,
          "revenue":20,
-         "desc":"When a corporation purchases the Memphis & Charleston, it receives the two train name chits. The corporation may place either or both of these on any trains it owns. Getting or placing the name chits does not close the Memphis & Charleston. Any train which has a name chit, and which makes a run that includes both of the locations named on the chit, has its revenue increased by the amount stated on the chit. The corporation may, on its turn, move the name chits freely among its trains, but each train is limited to at most one name at a time, and each chit may give its bonus to at most one train in each operating turn. The chits last for the rest of the game, unless that corporation changes presidents, in which case both chits are immediately removed from play."
+         "desc":"Owning corporation receives the Robert E. Lee marker which adds +20 to revenue if a route includes Atlanta and Birmingham and the Pan American marker which adds +40 to revenue if a route includes Nashville and Mobile. Each marker may be assigned to one train each operating round and both markers may be assigned to a single train. The bonuses are permanent unless a new player becomes president of the corporation, in which case they are removed from the game."
       },
       {
          "sym":"NDY",
          "name":"New Decatur Yards",
          "value":120,
          "revenue":20,
-         "desc":"A corporation which owns the New Decatur Yards may purchase any one new train from the bank for half the regular price. This action closes the New Decatur Yards."
+         "desc":"Owning corporation may purchase one new train from the bank with a discount of 50%, which closes the company.",
+         "abilities": [
+            {
+              "type": "train_discount",
+              "discount": 0.50,
+              "owner_type": "corporation",
+              "trains": [
+                 "3",
+                 "4",
+                 "5"
+              ],
+              "count": 1,
+              "when": "train"
+            }
+         ]
       }
    ],
    "corporations":[
@@ -237,7 +285,16 @@ module Engine
             100
          ],
          "coordinates":"A4",
-         "color":"blue"
+         "color":"blue",
+         "abilities": [
+            {
+              "type": "assign_hexes",
+              "hexes": [
+                "G4"
+              ],
+              "count": 1
+            }
+         ]
       },
       {
          "sym":"M&O",
@@ -250,7 +307,16 @@ module Engine
             100
          ],
          "coordinates":"Q2",
-         "color":"orange"
+         "color":"orange",
+         "abilities": [
+            {
+               "type": "assign_hexes",
+               "hexes": [
+                 "K2"
+               ],
+               "count": 1
+            }
+         ]
       },
       {
          "sym":"WRA",
@@ -263,7 +329,16 @@ module Engine
             100
          ],
          "coordinates":"L5",
-         "color":"red"
+         "color":"red",
+         "abilities": [
+            {
+               "type": "assign_hexes",
+               "hexes": [
+                 "J7"
+               ],
+               "count": 1
+            }
+         ]
       },
       {
          "sym":"ATN",
@@ -275,7 +350,16 @@ module Engine
             100
          ],
          "coordinates":"F1",
-         "color":"black"
+         "color":"black",
+         "abilities": [
+            {
+               "type": "assign_hexes",
+               "hexes": [
+                 "L1"
+               ],
+               "count": 1
+            }
+         ]
       },
       {
          "sym":"ABC",
@@ -286,7 +370,16 @@ module Engine
             40
          ],
          "coordinates":"G6",
-         "color":"green"
+         "color":"green",
+         "abilities": [
+            {
+               "type": "assign_hexes",
+               "hexes": [
+                 "G4"
+               ],
+               "count": 1
+            }
+         ]
       },
       {
          "sym":"TAG",
@@ -298,52 +391,179 @@ module Engine
          ],
          "coordinates":"E6",
          "color":"yellow",
-         "text_color":"black"
+         "text_color":"black",
+         "abilities": [
+            {
+               "type": "assign_hexes",
+               "hexes": [
+                 "G4"
+               ],
+               "count": 1
+            }
+         ]
       }
    ],
    "trains":[
       {
          "name":"2",
-         "distance":2,
+         "distance":[
+            {
+               "nodes":[
+                  "city",
+                  "offboard"
+               ],
+               "pay":2,
+               "visit":2
+            },
+            {
+               "nodes":[
+                  "town"
+               ],
+               "pay":99,
+               "visit":99
+            }
+         ],
          "price":100,
          "rusts_on":"4",
          "num":5
       },
       {
          "name":"3",
-         "distance":3,
+         "distance":[
+            {
+               "nodes":[
+                  "city",
+                  "offboard"
+               ],
+               "pay":3,
+               "visit":3
+            },
+            {
+               "nodes":[
+                  "town"
+               ],
+               "pay":99,
+               "visit":99
+            }
+         ],
          "price":180,
          "rusts_on":"6",
          "num":4
       },
       {
          "name":"4",
-         "distance":4,
+         "distance":[
+            {
+               "nodes":[
+                  "city",
+                  "offboard"
+               ],
+               "pay":4,
+               "visit":4
+            },
+            {
+               "nodes":[
+                  "town"
+               ],
+               "pay":99,
+               "visit":99
+            }
+         ],
          "price":300,
-         "rusts_on":"7",
+         "obsolete_on":"7",
          "num":3
       },
       {
          "name":"5",
-         "distance":5,
+         "distance":[
+            {
+               "nodes":[
+                  "city",
+                  "offboard"
+               ],
+               "pay":5,
+               "visit":5
+            },
+            {
+               "nodes":[
+                  "town"
+               ],
+               "pay":99,
+               "visit":99
+            }
+         ],
+         "events":[
+           {"type": "close_companies"}
+         ],
          "price":450,
          "num":2
       },
       {
          "name":"6",
-         "distance":6,
+         "distance":[
+            {
+               "nodes":[
+                  "city",
+                  "offboard"
+               ],
+               "pay":6,
+               "visit":6
+            },
+            {
+               "nodes":[
+                  "town"
+               ],
+               "pay":99,
+               "visit":99
+            }
+         ],
          "price":630,
-         "num":1
+         "num":1,
+         "events": [
+            {"type": "remove_tokens"}
+         ]
       },
       {
          "name":"7",
-         "distance":7,
+         "distance":[
+            {
+               "nodes":[
+                  "city",
+                  "offboard"
+               ],
+               "pay":7,
+               "visit":7
+            },
+            {
+               "nodes":[
+                  "town"
+               ],
+               "pay":99,
+               "visit":99
+            }
+         ],
          "price":700,
          "num":1
       },
       {
          "name":"4D",
-         "distance":4,
+         "distance":[
+            {
+               "nodes":[
+                  "city",
+                  "offboard"
+               ],
+               "pay":4,
+               "visit":4
+            },
+            {
+               "nodes":[
+                  "town"
+               ],
+               "pay":99,
+               "visit":99
+            }
+         ],
          "price":800,
          "num":5
       }
@@ -385,16 +605,20 @@ module Engine
          ],
          "town=revenue:0;upgrade=cost:20,terrain:water":[
             "C2",
-            "C6",
+            "C6"
+         ],
+         "city=revenue:0;upgrade=cost:20,terrain:water":[
             "C4"
          ],
          "upgrade=cost:20,terrain:water":[
-            "G2",
             "L3",
-            "M2",
             "N3",
+            "O2"
+         ],
+         "upgrade=cost:20,terrain:swamp":[
+            "G2",
+            "M2",
             "N5",
-            "O2",
             "O4",
             "P5"
          ],
@@ -404,22 +628,24 @@ module Engine
          "upgrade=cost:60,terrain:mountain":[
             "F7"
          ],
-         "city=revenue:0;upgrade=cost:60,terrain:mountain":[
+         "city=revenue:0;upgrade=cost:60,terrain:mountain;label=B;icon=image:18_al/coal,sticky:1":[
             "G4"
          ],
          "city=revenue:0":[
-            "G6",
-            "H3",
             "J7",
             "K2",
             "L5"
+         ],
+         "city=revenue:0;icon=image:18_al/coal,sticky:1":[
+            "G6",
+            "H3"
          ],
          "town=revenue:0":[
             "O6"
          ]
       },
       "red":{
-         "city=revenue:yellow_40|brown_50;path=a:0,b:_0;path=a:1,b:_0":[
+         "city=revenue:yellow_40|brown_50;path=a:0,b:_0,terminal:1;path=a:1,b:_0,terminal:1":[
             "A4"
          ],
          "offboard=revenue:yellow_40|brown_30;path=a:5,b:_0":[
@@ -434,7 +660,7 @@ module Engine
          "offboard=revenue:yellow_30|brown_40;path=a:2,b:_0;path=a:3,b:_0":[
             "P7"
          ],
-         "city=revenue:yellow_40|brown_50;path=a:2,b:_0;path=a:3,b:_0;path=a:4,b:_0":[
+         "city=revenue:yellow_40|brown_50;path=a:2,b:_0,terminal:1;path=a:3,b:_0,terminal:1;path=a:4,b:_0,terminal:1":[
             "Q2"
          ]
       },
@@ -445,7 +671,7 @@ module Engine
          "city=revenue:30;path=a:0,b:_0;path=a:4,b:_0;path=a:5,b:_0":[
             "F1"
          ],
-         "city=revenue:30;path=a:0,b:_0;path=a:2,b:_0;path=a:4,b:_0":[
+         "city=revenue:30;path=a:0,b:_0;path=a:2,b:_0;path=a:4,b:_0;icon=image:18_al/coal,sticky:1":[
             "H5"
          ],
          "city=revenue:yellow_30|brown_40,slots:2;path=a:0,b:_0;path=a:3,b:_0;path=a:4,b:_0":[
@@ -456,7 +682,7 @@ module Engine
          ]
       },
       "yellow":{
-         "city=revenue:20;path=a:3,b:_0;path=a:4,b:_0":[
+         "city=revenue:20;path=a:3,b:_0;path=a:4,b:_0;icon=image:18_al/coal,sticky:1":[
             "E6"
          ],
          "city=revenue:20;path=a:1,b:_0;path=a:_0,b:5":[
@@ -470,64 +696,87 @@ module Engine
          "train_limit":4,
          "tiles":[
             "yellow"
+         ],
+         "operating_rounds": 1,
+         "status":[
+            "can_buy_companies_from_other_players",
+            "limited_train_buy"
          ]
       },
       {
          "name":"3",
+         "on":"3",
          "train_limit":4,
          "tiles":[
             "yellow",
             "green"
          ],
-         "buy_companies":true
+         "status":[
+            "can_buy_companies",
+            "can_buy_companies_from_other_players",
+            "limited_train_buy"
+         ],
+         "operating_rounds": 2
       },
       {
          "name":"4",
+         "on":"4",
          "train_limit":3,
          "tiles":[
             "yellow",
             "green"
          ],
-         "buy_companies":true
+         "status":[
+            "can_buy_companies",
+            "can_buy_companies_from_other_players",
+            "limited_train_buy"
+         ],
+         "operating_rounds": 2
       },
       {
          "name":"5",
+         "on":"5",
          "train_limit":2,
          "tiles":[
             "yellow",
             "green",
             "brown"
          ],
-         "events":{
-            "close_companies":true
-         }
+         "operating_rounds": 3
       },
       {
          "name":"6",
+         "on":"6",
          "train_limit":2,
          "tiles":[
             "yellow",
             "green",
             "brown"
-         ]
+         ],
+         "operating_rounds": 3
       },
       {
          "name":"7",
+         "on":"7",
          "train_limit":2,
          "tiles":[
             "yellow",
             "green",
             "brown"
-         ]
+         ],
+         "operating_rounds": 3
       },
       {
          "name":"4D",
+         "on":"4D",
          "train_limit":2,
          "tiles":[
             "yellow",
             "green",
-            "brown"
-         ]
+            "brown",
+            "gray"
+         ],
+         "operating_rounds": 3
       }
    ]
 }

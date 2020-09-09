@@ -460,7 +460,10 @@ module Engine
       "name": "5",
       "distance": 5,
       "price": 450,
-      "num": 3
+      "num": 3,
+      "events":[
+        {"type": "close_companies"}
+      ]
     },
     {
       "name": "6",
@@ -599,7 +602,9 @@ module Engine
         "green"
       ],
       "operating_rounds": 2,
-      "buy_companies": true
+      "status":[
+        "can_buy_companies"
+      ]
     },
     {
       "name": "4",
@@ -610,7 +615,9 @@ module Engine
         "green"
       ],
       "operating_rounds": 2,
-      "buy_companies": true
+      "status":[
+        "can_buy_companies"
+      ]
     },
     {
       "name": "5",
@@ -621,10 +628,7 @@ module Engine
         "green",
         "brown"
       ],
-      "operating_rounds": 3,
-      "events": {
-        "close_companies": true
-      }
+      "operating_rounds": 3
     },
     {
       "name": "6",

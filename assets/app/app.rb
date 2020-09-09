@@ -27,9 +27,9 @@ class App < Snabberb::Component
     props = {
       props: { id: 'app' },
       style: {
-        'background-color': @user&.dig(:settings, :bg) || 'inherit',
+        backgroundColor: @user&.dig(:settings, :bg) || 'inherit',
         color: @user&.dig(:settings, :font) || 'currentColor',
-        'min-height': '98vh',
+        minHeight: '98vh',
         padding: '0.75vmin 2vmin 2vmin 2vmin',
         transition: 'background-color 1s ease',
       },
@@ -47,6 +47,8 @@ class App < Snabberb::Component
 
     refresh_user
     js_handlers
+
+    needs_consent = @user && !@user.dig('settings', 'consent')
 
     page =
       case @app_route
@@ -73,6 +75,8 @@ class App < Snabberb::Component
       else
         h(View::Home, user: @user)
       end
+
+    page = h(View::About, needs_consent: true) if needs_consent
 
     h('div#content', [page])
   end

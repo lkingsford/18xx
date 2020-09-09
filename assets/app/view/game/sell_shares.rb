@@ -8,10 +8,10 @@ module View
       include Actionable
 
       needs :player
-      needs :selected_corporation, default: nil, store: true
+      needs :corporation
 
       def render
-        buttons = @game.round.sellable_bundles(@player, @selected_corporation).map do |bundle|
+        buttons = @game.sellable_bundles(@player, @corporation).map do |bundle|
           sell = lambda do
             process_action(Engine::Action::SellShares.new(
               @player,
@@ -25,10 +25,17 @@ module View
 
           text = "Sell #{num_shares} (#{@game.format_currency(bundle.price)})"
 
-          h('button.button.margined_half', { on: { click: sell } }, text)
+          props = {
+            style: {
+              padding: '0.2rem 0',
+              width: '6rem',
+            },
+            on: { click: sell },
+          }
+          h('button.sell_share', props, text)
         end
 
-        h(:div, { style: { 'margin-top': '1rem' } }, buttons.compact)
+        h(:div, buttons.compact)
       end
     end
   end

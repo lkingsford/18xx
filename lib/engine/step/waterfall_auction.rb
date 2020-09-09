@@ -1,45 +1,34 @@
 # frozen_string_literal: true
 
 require_relative 'base'
-require_relative 'payout_companies'
+require_relative 'auctioner'
 
 module Engine
   module Step
     class WaterfallAuction < Base
-      include PayoutCompanies
-
+      include Auctioner
       ACTIONS = %w[bid pass].freeze
 
-      attr_reader :bids, :companies
+      attr_reader :companies
 
       def description
         'Bid on Companies'
       end
 
-      def pass_description
-        if auctioning_company
-          "Pass (on #{auctioning_company.sym})"
-        else
-          'Pass'
-        end
+      def available
+        @companies
       end
 
       def process_pass(action)
         entity = action.entity
 
         if auctioning_company
-          @log << "#{entity.name} passes on #{auctioning_company.name}"
-
-          # Remove ourselves from the current bidding, but we can come back in.
-          @bids[auctioning_company]&.reject! do |bid|
-            bid.entity == entity
-          end
-          resolve_bids
+          pass_auction(action.entity)
         else
           @log << "#{entity.name} passes bidding"
           entity.pass!
           all_passed! if entities.all?(&:passed?)
-          @round.next_index!
+          @round.next_entity_index!
         end
       end
 
@@ -49,8 +38,9 @@ module Engine
         if auctioning_company
           add_bid(action)
         else
+          @round.last_to_act = action.entity
           placement_bid(action)
-          @round.next_index!
+          @round.next_entity_index!
         end
       end
 
@@ -74,14 +64,10 @@ module Engine
         correct || entity == current_entity ? ACTIONS : []
       end
 
-      def min_increment
-        @game.class::MIN_BID_INCREMENT
-      end
-
       def setup
+        super
         @companies = @game.companies.sort_by(&:min_bid)
         @cheapest = @companies.first
-        @bids = Hash.new { |h, k| h[k] = [] }
         @bidders = Hash.new { |h, k| h[k] = [] }
       end
 
@@ -95,7 +81,7 @@ module Engine
         return unless company
         return company.min_bid if may_purchase?(company)
 
-        high_bid = @bids[company].max_by(&:price)
+        high_bid = highest_bid(company)
         (high_bid ? high_bid.price : company.min_bid) + min_increment
       end
 
@@ -104,12 +90,8 @@ module Engine
         company && company == @companies.first
       end
 
-      def committed_cash(player)
+      def committed_cash(player, _show_hidden = false)
         bids_for_player(player).sum(&:price)
-      end
-
-      def current_bid_amount(player, company)
-        bids[company]&.find { |b| b.entity == player }&.price || 0
       end
 
       def max_bid(player, company)
@@ -134,7 +116,8 @@ module Engine
             resolve_bids
           end
         else
-          payout_companies
+          @game.payout_companies
+          @game.or_set_finished
         end
 
         entities.each(&:unpass!)
@@ -144,10 +127,6 @@ module Engine
         company = @companies[0]
         bids = @bids[company]
         yield company, bids if bids.any?
-      end
-
-      def auctioning_company
-        active_company_bids { |company, _| company }
       end
 
       def placement_bid(bid)
@@ -178,16 +157,11 @@ module Engine
       end
 
       def add_bid(bid)
+        super
         company = bid.company
-        entity = bid.entity
         price = bid.price
-        min = min_bid(company)
-        raise Engine::GameError, "Minimum bid is #{@game.format_currency(min)} for #{company.name}" if price < min
-        raise GameError, 'Cannot afford bid' if bids_for_player(entity).sum(&:price) > entity.cash
+        entity = bid.entity
 
-        bids = @bids[company]
-        bids.reject! { |b| b.entity == entity }
-        bids << bid
         @bidders[company] |= [entity]
 
         @log << "#{entity.name} bids #{@game.format_currency(price)} for #{bid.company.name}"
@@ -219,12 +193,6 @@ module Engine
             @game.share_pool.buy_shares(player, share, exchange: :free)
           end
         end
-      end
-
-      def bids_for_player(player)
-        @bids.values.map do |bids|
-          bids.find { |bid| bid.entity == player }
-        end.compact
       end
     end
   end

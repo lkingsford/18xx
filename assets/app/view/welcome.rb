@@ -3,32 +3,39 @@
 module View
   class Welcome < Snabberb::Component
     needs :app_route, default: nil, store: true
+    needs :show_intro, default: true
 
     def render
-      h('div#welcome.half', [
-        render_notification,
-        render_introduction,
-        render_buttons,
-      ])
+      children = [render_notification]
+      children << render_introduction if @show_intro
+      children << render_buttons
+
+      h('div#welcome.half', children)
     end
 
     def render_notification
       message = <<~MESSAGE
-        <p>Using company abilities have changed. When they are corporation owned, you click on them to activate them.</p>
-        <p>1836Jr30 is now available for beta.</p>
-        <p>1846 is now available for alpha.</p>
-
-        <p>Please file issues <a href='https://github.com/tobymao/18xx/issues'>here</a>. And if you have any questions, check out the
-        <a href='https://docs.google.com/document/d/1nCYnzNMQLrFLZtWdbjfuSx5aIcaOyi27lMYkJxcGayw/edit'>FAQ!</a>
+        <p>18GA and 18TN have finished beta and are now in production!</p>
+        <p>Please file <a href='https://github.com/tobymao/18xx/issues'>issues and ideas</a> on
+        <a href='https://github.com/tobymao/18xx/issues'>GitHub</a>.<br>
+        If you have any questions, check out the <a href="https://github.com/tobymao/18xx/wiki/FAQ">FAQ</a> and other
+        resources in our <a href='https://github.com/tobymao/18xx/wiki'>Wiki!</a>
         </p>
 
-        <p>If you're looking to buy these games, please check out
         <a href='https://all-aboardgames.com'>All-Aboard Games</a>,
         <a href='https://www.grandtrunkgames.com'>Grand Trunk Games</a>,
+        <a href='https://goldenspikegames.com'>Golden Spike Games</a>,
         and <a href='https://www.gmtgames.com/'>GMT Games</a>.
         </p>
 
         <p>You can support this project on <a href='https://www.patreon.com/18xxgames'>Patreon</a>.
+        </p>
+
+        <p>Consider joining the
+        <a href='https://join.slack.com/t/18xxgames/shared_invite/zt-8ksy028m-CSZC~G5QtiFv60_jdqqulQ'>18xx slack</a>.
+        General 18xx.games discussion is in <a href='https://18xxgames.slack.com/archives/CV3R3HPUZ'>#18xxgames</a>,
+        development discussion is in <a href='https://18xxgames.slack.com/archives/C012K0CNY5C'>#18xxgamesdev</a>
+        (you can ask about bugs there), and general 18xx chat in <a href='https://18xxgames.slack.com/archives/C68J3MK2A'>#general</a>.
         </p>
       MESSAGE
 
@@ -48,8 +55,9 @@ module View
 
     def render_introduction
       message = <<~MESSAGE
-        <p>18xx.games is a website where you can play async or real-time 18xx games (based on the system originally devised by the brilliant Francis Tresham)! Right now only 1889 and 18Chesapeake are implemented
-        but I'm planning on doing many more in the future.</p>
+        <p>18xx.games is a website where you can play async or real-time 18xx games (based on the system originally devised by the brilliant Francis Tresham)!
+        <p>Right now, 1889, 18Chesapeake, 1846, 1836Jr30, 1882, 18AL, 18GA, and 18TN are implemented.
+        If you are new to 18xx games then 1889 or 18Chesapeake are good games to begin with.</p>
 
         <p>You can play locally with hot seat mode without an account. If you want to play multiplayer, you'll need to create an account.</p>
 
@@ -87,8 +95,8 @@ module View
       }
 
       h('div#buttons', props, [
-        h('button.button', create_props, 'CREATE A NEW GAME'),
-        h('button.button', tutorial_props, 'TUTORIAL'),
+        h(:button, create_props, 'CREATE A NEW GAME'),
+        h(:button, tutorial_props, 'TUTORIAL'),
       ])
     end
   end

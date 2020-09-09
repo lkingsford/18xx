@@ -23,6 +23,15 @@ module View
         needs :reservation, default: nil
         needs :game, default: nil, store: true
 
+        RESERVATION_FONT_SIZE = {
+          1 => 22,
+          2 => 22,
+          3 => 22,
+          4 => 17,
+          5 => 13,
+          6 => 13,
+        }.freeze
+
         def render_part
           children = []
           children << h(:circle, attrs: { r: @radius, fill: 'white' })
@@ -37,45 +46,61 @@ module View
         end
 
         def reservation
-          h(
-            :text,
-            { attrs: { fill: 'black', transform: 'translate(0 9) scale(1.75)' } },
-            @reservation.id,
-          )
+          text = @reservation.id
+
+          non_home = @reservation.corporation? && (@reservation.coordinates != @city.hex.coordinates)
+          color = non_home ? '#808080' : 'black'
+
+          attrs = {
+            fill: 'black',
+            'font-size': "#{RESERVATION_FONT_SIZE[text.size]}px",
+            'dominant-baseline': 'central',
+          }
+
+          if non_home
+            attrs[:stroke] = color
+            attrs[:fill] = color
+          end
+
+          h(:text, { attrs: attrs }, text)
         end
 
         def on_click(event)
-          return if @token
           return if @tile_selector&.is_a?(Lib::TileSelector)
 
-          round = @selected_company ? @game.special : @game.round
-          return unless round.can_place_token?
+          step = @game.round.active_step(@selected_company)
+          entity = @selected_company || step.current_entity
+          actions = step.actions(entity)
+          return if (%w[remove_token place_token] & actions).empty?
+          return if @token && !step.can_replace_token?(entity, @token)
 
           event.JS.stopPropagation
 
-          # If there's a choice of tokens of different types show the selector, otherwise just place
-          next_tokens = @game.current_entity.tokens_by_type
-          if (token = @game.round.ambiguous_token)
-            # There should only be one token in the city
-            action = Engine::Action::MoveToken.new(
-              @game.current_entity,
-              city: @city,
-              slot: @slot_index,
-              token: token,
-            )
+          if actions.include?('remove_token')
+            return unless @token
 
-            process_action(action)
-          elsif next_tokens.size == 1 || @game.round.step == :home_token
-            action = Engine::Action::PlaceToken.new(
+            action = Engine::Action::RemoveToken.new(
               @selected_company || @game.current_entity,
               city: @city,
-              slot: @slot_index,
+              slot: @slot_index
             )
-            store(:selected_company, nil, skip: true)
             process_action(action)
           else
-            store(:tile_selector,
-                  Lib::TokenSelector.new(@tile.hex, Hex.coordinates(@tile.hex), @city, @slot_index))
+            # If there's a choice of tokens of different types show the selector, otherwise just place
+            next_tokens = step.available_tokens(entity)
+            if next_tokens.size == 1 && actions.include?('place_token')
+              action = Engine::Action::PlaceToken.new(
+                @selected_company || @game.current_entity,
+                city: @city,
+                slot: @slot_index,
+                token_type: next_tokens[0].type
+              )
+              store(:selected_company, nil, skip: true)
+              process_action(action)
+            else
+              store(:tile_selector,
+                    Lib::TokenSelector.new(@tile.hex, Hex.coordinates(@tile.hex), @city, @slot_index))
+            end
           end
         end
       end

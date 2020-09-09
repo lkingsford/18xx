@@ -2,72 +2,48 @@
 
 require 'view/game/part/base'
 require 'view/game/part/multi_revenue'
+require 'view/game/part/small_item'
 
 module View
   module Game
     module Part
       class Revenue < Base
-        P_RIGHT_CORNER = {
-          region_weights: RIGHT_CORNER,
-          x: 75,
-          y: 0,
-        }.freeze
-
-        P_LEFT_CORNER = {
-          region_weights: LEFT_CORNER,
-          x: -75,
-          y: 0,
-        }.freeze
-
-        P_UPPER_LEFT_CORNER = {
-          region_weights: UPPER_LEFT_CORNER,
-          x: -35,
-          y: -60.62,
-        }.freeze
-
-        P_BOTTOM_LEFT_CORNER = {
-          region_weights: BOTTOM_LEFT_CORNER,
-          x: -35,
-          y: 60.62,
-        }.freeze
-
-        P_BOTTOM_RIGHT_CORNER = {
-          region_weights: BOTTOM_RIGHT_CORNER,
-          x: 35,
-          y: 60.62,
-        }.freeze
+        include SmallItem
 
         def preferred_render_locations
           if multi_revenue?
+
+            top_weights = if layout == :flat
+                            { TOP_MIDDLE_ROW => 1.5 }
+                          else
+                            { [2, 6, 7, 8] => 1.5, [3, 5] => 0.5 }
+                          end
+
+            bottom_weights = if layout == :flat
+                               { BOTTOM_MIDDLE_ROW => 1.5 }
+                             else
+                               { [15, 16, 21, 17] => 1.5, [18, 20] => 0.5 }
+                             end
+
             [
               {
-                region_weights: CENTER,
+                region_weights: { CENTER => 1.5 },
                 x: 0,
                 y: 0,
               },
               {
-                region_weights: TOP_MIDDLE_ROW,
-                x: 0,
-                y: -24,
-              },
-              {
-                region_weights: BOTTOM_MIDDLE_ROW,
-                x: 0,
-                y: 24,
-              },
-              {
-                region_weights: TOP_ROW,
+                region_weights: top_weights,
                 x: 0,
                 y: -48,
               },
               {
-                region_weights: BOTTOM_ROW,
+                region_weights: bottom_weights,
                 x: 0,
-                y: 48,
+                y: 45,
               },
             ]
           else
-            [P_RIGHT_CORNER, P_LEFT_CORNER, P_BOTTOM_RIGHT_CORNER, P_UPPER_LEFT_CORNER, P_BOTTOM_LEFT_CORNER]
+            SMALL_ITEM_LOCATIONS
           end
         end
 
@@ -89,7 +65,7 @@ module View
         end
 
         def render_part
-          transform = "#{translate} #{rotation_for_layout}"
+          transform = "#{rotation_for_layout} #{translate}"
 
           if multi_revenue?
             h(MultiRevenue, revenues: @revenue, transform: transform)

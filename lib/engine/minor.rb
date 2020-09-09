@@ -2,6 +2,7 @@
 
 require_relative 'assignable'
 require_relative 'abilities'
+require_relative 'entity'
 require_relative 'ownable'
 require_relative 'passer'
 require_relative 'spender'
@@ -11,6 +12,7 @@ module Engine
   class Minor
     include Abilities
     include Assignable
+    include Entity
     include Operator
     include Ownable
     include Passer
@@ -35,20 +37,12 @@ module Engine
       @name
     end
 
-    def player?
-      false
-    end
-
-    def company?
-      false
-    end
-
-    def corporation?
-      false
-    end
-
     def minor?
       true
+    end
+
+    def total_shares
+      1
     end
   end
 end

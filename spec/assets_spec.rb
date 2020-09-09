@@ -18,7 +18,11 @@ describe 'Assets' do
     end
 
     it 'renders home logged in' do
-      expect(render(user: { name: 'toby' })).to include('Welcome toby!')
+      expect(render(user: { name: 'toby', settings: { consent: true } })).to include('Welcome toby!')
+    end
+
+    it 'consent logged in' do
+      expect(render(user: { name: 'toby' })).to include('I agree to the privacy policy')
     end
 
     it 'renders about' do
@@ -116,6 +120,7 @@ describe 'Assets' do
         user: {
           id: 1,
           name: 'Player 1',
+          settings: { consent: true },
         },
       }
 
@@ -125,8 +130,78 @@ describe 'Assets' do
       expect(render(app_route: '/game/1#market', **needs)).to include('Bank Cash')
       expect(render(app_route: '/game/1#info', **needs)).to include('Upcoming')
       expect(render(app_route: '/game/1#tiles', **needs)).to include('492')
-      expect(render(app_route: '/game/1#spreadsheet', **needs)).to include('Worth')
+      expect(render(app_route: '/game/1#spreadsheet', **needs)).to include('Value')
       expect(render(app_route: '/game/1#tools', **needs)).to include('Clone this')
+    end
+
+    TEST_CASES = [
+      ['1889', 314, 6, 'stock_round', 'Pass (Share)'],
+      ['1889', 314, 13, 'float', 'KO receives ¥700'],
+      ['1889', 314, 21, 'lay_track', '1889: Operating Round 1.1 (of 1) - Lay Track'],
+      ['1889', 314, 22, 'buy_train', 'KO must buy an available train'],
+      ['1889', 314, 46, 'run_routes', '1889: Operating Round 2.1 (of 1) - Run Routes'],
+      ['1889', 314, 47, 'dividends', '1889: Operating Round 2.1 (of 1) - Pay or Withhold Dividends'],
+      ['1889', 314, 78, 'buy_company',
+       ['1889: Operating Round 3.1 (of 1) - Buy Companies',
+        'Owning corporation may ignore building cost for mountain hexes']],
+      ['1889', 314, 81, 'track_and_buy_company',
+       ['1889: Operating Round 3.1 (of 1) - Lay Track',
+        'Blocks Takamatsu (K4) while owned by a player.']],
+      ['1889', 314, 87, 'special_track',
+       ['1889: Operating Round 3.1 (of 1) - Lay Track for Ehime Railway',
+        'Blocks C4 while owned by a player.']],
+      ['1889', 314, 336, 'discard_train', 'Discard Trains'],
+      ['1889', 314, 346, 'buy_train_emr', 'TR must buy an available train'],
+      ['1889', 314, 445, 'buy_train_emr_shares', 'and can sell ¥650 in shares'],
+      ['1889', 314, nil, 'endgame', '1889: Operating Round 7.1 (of 3) - Game Over - Bankruptcy'],
+      ['1882', 5236, 399, 'sc_home_token', '1882: Stock Round 6 - Place Home Token'],
+      ['1882', 5236, 229, 'qll_home_token', '1882: Operating Round 4.1 (of 1) - Place Home Token'],
+      ['1882', 5236, 370, 'nwr_place_token', '1882: Operating Round 5.2 (of 2) - NWR: Place Token'],
+      ['1882', 5236, 371, 'nwr_lay_track', '1882: Operating Round 5.2 (of 2) - NWR: Lay Track'],
+      ['1846', 3099, 0, 'draft', '1846: Draft Round 1 - Draft Companies'],
+      ['1846', 3099, 18, 'draft', 'Mail Contract'],
+      ['1846', 3099, 49, 'lay_track_or_token',
+       ['1846: Operating Round 1.1 (of 2) - Place a Token or Lay Track',
+        # Minor charter stuff
+        'Michigan Southern', 'Trains', '2', 'Cash', 'C15', '$60']],
+      ['1846', 3099, 54, 'issue_shares', '1846: Operating Round 1.1 (of 2) - Issue or Redeem Shares'],
+      ['1846', 3099, 190, 'assign',
+       ['1846: Operating Round 2.1 (of 2) - Assign Steamboat Company',
+        'Blondie may assign Steamboat Company to a new hex and/or corporation or minor.',
+        'Add $20 per port symbol to all routes run to the assigned location '\
+        'by the owning/assigned corporation/minor.']],
+      ['1846', 'hs_cvjhogoy_1599504419', 49, 'buy_train_emr_shares', 'and can sell $60 in shares'],
+      ['1846', 3099, nil, 'endgame', '1846: Operating Round 6.2 (of 2) - Game Over - Bank Broken'],
+      ['18_al', 4714, nil, 'endgame', '18AL: Operating Round 7.2 (of 3) - Game Over - Company hit max stock value'],
+      ['18_ga', 8643, nil, 'endgame', '18GA: Operating Round 8.1 (of 3) - Game Over - Bank Broken'],
+      ['18_tn', 7818, nil, 'endgame', '18TN: Operating Round 8.2 (of 3) - Game Over - Bank Broken'],
+    ].freeze
+
+    def render_game(jsonfile, no_actions, string)
+      data = JSON.parse(File.read(jsonfile))
+      data['actions'] = data['actions'].take(no_actions) if no_actions
+      data[:loaded] = true
+      needs = {
+        game_data: data,
+        user: data['user'].merge(settings: { consent: true }),
+        disable_user_errors: true,
+      }
+
+      html = render(app_route: "/game/#{needs[:game_data]['id']}", **needs)
+      strings = Array(string)
+      strings.each { |str| expect(html).to include(str) }
+    end
+
+    TEST_CASES.each do |game, game_id, action, step, string|
+      describe game do
+        it "renders #{step}" do
+          render_game("spec/fixtures/#{game}/#{game_id}.json", action, string)
+        end
+      end
+    end
+
+    it 'renders tutorial to the end' do
+      render_game('public/assets/tutorial.json', nil, 'Good luck and have fun!')
     end
   end
 end

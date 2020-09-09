@@ -1,140 +1,124 @@
 # frozen_string_literal: true
 
 require 'lib/color'
+require 'lib/settings'
+require 'lib/text'
 
 module View
   module Game
     class GameInfo < Snabberb::Component
+      include Lib::Color
+      include Lib::Settings
+      include Lib::Text
+
       needs :game
+      needs :layout, default: nil
 
       def render
         @depot = @game.depot
 
-        h(:div,  { style: {
-          overflow: 'auto',
-        } }, [
-          render_body,
-          ])
+        if @layout == :discarded_trains
+          @depot.discarded.empty? ? '' : discarded_trains
+        else
+          h('div#game_info', render_body)
+        end
       end
 
       def render_body
-        children = [h(:div, [upcoming_trains])]
-
-        unless @depot.discarded.empty?
-          props = {
-            style: {
-              'margin-top': '1rem',
-            },
-          }
-
-          children << h(:div, props, [
-            discarded_trains,
-          ])
-        end
-
-        children << phases
-        children << game_info
-
-        h(:div, {}, children)
+        children = upcoming_trains
+        children.concat(discarded_trains) if @depot.discarded.any?
+        children.concat(phases, game_info)
       end
 
       def game_info
-        props = {
-          style: {
-            'margin-top': '1rem',
-          },
-        }
-        children = []
+        children = [h(:h3, 'Game Info')]
 
         if (publisher = @game.class::GAME_PUBLISHER)
-          children << h(:div, props, [
+          children << h(:p, [
               'Published by ',
               h(:a, { attrs: { href: publisher[:url] } }, publisher[:name]),
             ])
         end
-        children << h(:div, props, "Designed by #{@game.class::GAME_DESIGNER}") if @game.class::GAME_DESIGNER
+        children << h(:p, "Designed by #{@game.class::GAME_DESIGNER}") if @game.class::GAME_DESIGNER
         if @game.class::GAME_RULES_URL
-          children << h(:div, props, [h(:a, { attrs: { href: @game.class::GAME_RULES_URL } }, 'Rules')])
+          children << h(:p, [h(:a, { attrs: { href: @game.class::GAME_RULES_URL } }, 'Rules')])
         end
 
-        h(:div, children)
+        if @game.class::GAME_INFO_URL
+          children << h(:p, [h(:a, { attrs: { href: @game.class::GAME_INFO_URL } }, 'More info')])
+        end
+
+        children
       end
 
       def phases
-        td_props = {
-          style: {
-            padding: '0 1rem',
-          },
-        }
-
         current_phase = @game.phase.current
+        phases_events = []
         rows = @game.phase.phases.map do |phase|
+          row_events = []
+
+          phase[:status]&.each do |status|
+            row_events << @game.class::STATUS_TEXT[status] if @game.class::STATUS_TEXT[status]
+          end
+          phases_events.concat(row_events)
+
           phase_color = Array(phase[:tiles]).last
+          bg_color = color_for(phase_color)
           phase_props = {
             style: {
-              padding: '0 1rem',
+              backgroundColor: bg_color,
+              color: contrast_on(bg_color),
             },
           }
-          if Part::MultiRevenue::COLOR.include?(phase_color)
-            phase_props[:style]['background-color'] =
-              Lib::Color.convert_hex_to_rgba(Part::MultiRevenue::COLOR[phase_color], 0.4)
-          end
-
-          event_text = []
-          event_text << 'Can Buy Companies' if phase[:buy_companies]
-          phase[:events]&.each do |name, _value|
-            event_text << (@game.class::EVENTS_TEXT[name] ? "#{@game.class::EVENTS_TEXT[name][0]}*" : name)
-          end
 
           h(:tr, [
-            h(:td, td_props, phase[:name] + (current_phase == phase ? ' (Current) ' : '')),
-            h(:td, td_props, phase[:operating_rounds]),
-            h(:td, td_props, phase[:train_limit]),
+            h(:td, (current_phase == phase ? '→ ' : '') + phase[:name]),
+            h(:td, phase[:on]),
+            h(:td, phase[:operating_rounds]),
+            h(:td, phase[:train_limit]),
             h(:td, phase_props, phase_color.capitalize),
-            h(:td, td_props, event_text.join(',')),
+            h(:td, row_events.map(&:first).join(', ')),
           ])
         end
 
-        phase_text = @game.class::EVENTS_TEXT.map do |_sym, desc|
-          h(:tr, [h(:td, td_props, desc[0]), h(:td, td_props, desc[1])])
+        status_text = phases_events.uniq.map do |short, long|
+          h(:tr, [h(:td, short), h(:td, long)])
         end
 
-        if phase_text.any?
-          phase_text = [h(:table, [
-            h(:tr, [
-              h(:th, td_props, 'Event'),
-              h(:th, td_props, 'Description'),
-              ]),
-            *phase_text,
+        if status_text.any?
+          status_text = [h(:table, [
+            h(:thead, [
+              h(:tr, [
+                h(:th, 'Status'),
+                h(:th, 'Description'),
+                ]),
+            ]),
+            h(:tbody, status_text),
           ])]
         end
 
-        props = {
-          style: { 'margin-top': '1rem' },
-        }
-        h(:div, props, [
-          h(:div, 'Game Phases'),
-          h(:table, [
-            h(:tr, [
-              h(:th, td_props, 'Phase'),
-              h(:th, td_props.merge(attrs: { title: 'Number of Operating Rounds' }), '# OR'),
-              h(:th, td_props, 'Train Limit'),
-              h(:th, td_props, 'Tiles'),
-              h(:th, td_props, 'Events'),
+        [
+          h(:h3, 'Game Phases'),
+          h(:div, { style: { overflowX: 'auto' } }, [
+            h(:table, [
+              h(:thead, [
+                h(:tr, [
+                  h(:th, 'Phase'),
+                  h(:th, 'On Train'),
+                  h(:th, { attrs: { title: 'Number of Operating Rounds' } }, 'ORs'),
+                  h(:th, 'Train Limit'),
+                  h(:th, 'Tiles'),
+                  h(:th, 'Status'),
+                ]),
+              ]),
+              h('tbody.zebra', rows),
             ]),
-            *rows,
           ]),
-          *phase_text,
-        ])
+          *status_text,
+        ]
       end
 
       def upcoming_trains
-        td_props = {
-          style: {
-            padding: '0 1rem',
-          },
-        }
-
         rust_schedule = {}
         obsolete_schedule = {}
         @depot.trains.group_by(&:name).each do |name, trains|
@@ -143,66 +127,114 @@ module View
           obsolete_schedule[first.obsolete_on] = Array(obsolete_schedule[first.obsolete_on]).append(name)
         end
 
+        show_obsolete_schedule = obsolete_schedule.keys.any?
+
         rows = @depot.upcoming.group_by(&:name).map do |name, trains|
           train = trains.first
           discounts = train.discount&.group_by { |_k, v| v }&.map do |price, price_discounts|
-            price_discounts.map(&:first).join(',') + ' => ' + @game.format_currency(price)
+            price_discounts.map(&:first).join(', ') + ' → ' + @game.format_currency(price)
           end
-          names =  train.variants.values.map { |var| var[:name] }
-          prices = train.variants.values.map { |var| var[:price] }
+          names_to_prices = train.names_to_prices
 
-          h(:tr, [
-            h(:td, td_props, names.join(',')),
-            h(:td, td_props, prices.map { |p| @game.format_currency(p) }.join(',')),
-            h(:td, td_props, trains.size),
-            h(:td, td_props, obsolete_schedule[name]&.join(',') || 'None'),
-            h(:td, td_props, rust_schedule[name]&.join(',') || 'None'),
-            h(:td, td_props, discounts&.join(' ')),
-            h(:td, td_props, train.available_on),
-          ])
+          event_text = []
+          trains.each.with_index do |train2, index|
+            train2.events.each do |event|
+              event_name = event['type']
+              event_name = "#{@game.class::EVENTS_TEXT[event_name][0]}*" if @game.class::EVENTS_TEXT[event_name]
+
+              event_text << if index.zero?
+                              event_name
+                            else
+                              "#{event_name}(on #{ordinal(index + 1)} train)"
+                            end
+              event_text << event_name unless event_text.include?(event_name)
+            end
+          end
+
+          upcoming_train_content = [
+            h(:td, names_to_prices.keys.join(', ')),
+            h('td.right', names_to_prices.values.map { |p| @game.format_currency(p) }.join(', ')),
+            h(:td, trains.size),
+          ]
+          upcoming_train_content << h(:td, obsolete_schedule[name]&.join(', ') || 'None') if show_obsolete_schedule
+          upcoming_train_content.concat([
+            h(:td, rust_schedule[name]&.join(', ') || 'None'),
+            h(:td, discounts&.join(' ')),
+            h(:td, train.available_on),
+            h(:td, event_text.join(', ')),
+])
+          h(:tr, upcoming_train_content)
         end
 
-        h(:div, [
-          h(:div, 'Upcoming Trains'),
-          h(:table, [
-            h(:tr, [
-              h(:th, td_props, 'Type'),
-              h(:th, td_props, 'Price'),
-              h(:th, td_props, 'Remaining'),
-              h(:th, td_props, 'Phases out'),
-              h(:th, td_props, 'Rusts'),
-              h(:th, td_props, 'Upgrade Discount'),
-              h(:th, td_props.merge(attrs: { title: 'Available after purchase of first train of type' }), 'Available'),
+        event_text = @game.class::EVENTS_TEXT.map do |_sym, desc|
+          h(:tr, [h(:td, desc[0]), h(:td, desc[1])])
+        end
+
+        if event_text.any?
+          event_text = [h(:table, [
+            h(:thead, [
+              h(:tr, [
+                h(:th, 'Event'),
+                h(:th, 'Description'),
+                ]),
             ]),
-            *rows,
-          ]),
+            h(:tbody, event_text),
+          ])]
+        end
+
+        upcoming_train_header = [
+          h(:th, 'Type'),
+          h(:th, 'Price'),
+          h(:th, 'Remaining'),
+        ]
+
+        upcoming_train_header << h(:th, 'Phases out') if show_obsolete_schedule
+        upcoming_train_header.concat([
+          h(:th, 'Rusts'),
+          h(:th, 'Upgrade Discount'),
+          h(:th, { attrs: { title: 'Available after purchase of first train of type' } }, 'Available'),
+          h(:th, 'Events'),
         ])
+        [
+          h(:h3, 'Upcoming Trains'),
+          h(:div, { style: { overflowX: 'auto' } }, [
+            h(:table, [
+              h(:thead, [
+                h(:tr, upcoming_train_header),
+              ]),
+              h('tbody.zebra', rows),
+            ]),
+          ]),
+          *event_text,
+        ]
       end
 
       def discarded_trains
-        td_props = {
-          style: {
-            padding: '0 1rem',
-          },
-        }
-
         rows = @depot.discarded.map do |train|
           h(:tr, [
-            h(:td, td_props, train.name),
-            h(:td, td_props, @game.format_currency(train.price)),
+            h(:td, train.name),
+            h(:td, @game.format_currency(train.price)),
           ])
         end
 
-        h(:div, [
-          h(:div, 'In bank pool:'),
-          h(:table, [
+        table = h(:table, [
+          h(:thead, [
             h(:tr, [
-              h(:th, td_props, 'Type'),
-              h(:th, td_props, 'Price'),
+              h(:th, 'Type'),
+              h(:th, 'Price'),
             ]),
-            *rows,
           ]),
+          h(:tbody, rows),
         ])
+
+        if @layout == :discarded_trains
+          h(:div, { style: { display: 'grid', justifyItems: 'center' } }, [
+            h(:div, 'Trains in Bank Pool'),
+            table,
+          ])
+        else
+          [h(:h3, 'Trains in Bank Pool'), table]
+        end
       end
     end
   end

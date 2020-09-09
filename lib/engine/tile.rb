@@ -16,7 +16,8 @@ module Engine
 
     attr_accessor :hex, :icons, :index, :legal_rotations, :location_name, :name, :reservations
     attr_reader :blocks_lay, :borders, :cities, :color, :edges, :junction, :label, :nodes,
-                :parts, :preprinted, :rotation, :stops, :towns, :upgrades, :offboards, :blockers
+                :parts, :preprinted, :rotation, :stops, :towns, :upgrades, :offboards, :blockers,
+                :city_towns
 
     ALL_EDGES = [0, 1, 2, 3, 4, 5].freeze
 
@@ -63,35 +64,48 @@ module Engine
       case type
       when 'path'
         params = params.map do |k, v|
-          case v[0]
-          when '_'
-            [k, cache[v[1..-1].to_i]]
+          case k
+          when 'terminal'
+            [k, v]
           else
-            [k, Part::Edge.new(v)]
+            case v[0]
+            when '_'
+              [k, cache[v[1..-1].to_i]]
+            else
+              [k, Part::Edge.new(v)]
+            end
           end
         end.to_h
 
-        Part::Path.new(params['a'], params['b'])
+        Part::Path.new(params['a'], params['b'], terminal: params['terminal'])
       when 'city'
         city = Part::City.new(params['revenue'],
-                              params.fetch('slots', 1),
-                              params['groups'],
-                              params['hide'],
-                              params['visit_cost'])
+                              slots: params['slots'],
+                              groups: params['groups'],
+                              hide: params['hide'],
+                              visit_cost: params['visit_cost'],
+                              route: params['route'],
+                              format: params['format'],
+                              loc: params['loc'])
         cache << city
         city
       when 'town'
         town = Part::Town.new(params['revenue'],
-                              params['groups'],
-                              params['hide'],
-                              params['visit_cost'])
+                              groups: params['groups'],
+                              hide: params['hide'],
+                              visit_cost: params['visit_cost'],
+                              route: params['route'],
+                              format: params['format'],
+                              loc: params['loc'])
         cache << town
         town
       when 'offboard'
         offboard = Part::Offboard.new(params['revenue'],
-                                      params['groups'],
-                                      params['hide'],
-                                      params['visit_cost'])
+                                      groups: params['groups'],
+                                      hide: params['hide'],
+                                      visit_cost: params['visit_cost'],
+                                      route: params['route'],
+                                      format: params['format'])
         cache << offboard
         offboard
       when 'label'
@@ -129,8 +143,11 @@ module Engine
       @cities = []
       @paths = []
       @towns = []
+      @city_towns = []
+      @all_stop = []
       @upgrades = []
       @offboards = []
+      @original_borders = []
       @borders = []
       @branches = nil
       @nodes = nil
@@ -183,45 +200,8 @@ module Engine
       @_exits ||= @edges.map { |e| rotate(e.num, @rotation) }.uniq
     end
 
-    def lawson?
-      @lawson ||=
-        !!@junction ||
-        (@cities.one? && @towns.empty?) ||
-        ((cities.empty? && towns.one?) && edges.size > 2)
-    end
-
-    def upgrade_cost(abilities)
-      ability = abilities.find { |a| a.type == :tile_discount }
-
-      @upgrades.sum do |upgrade|
-        discount = ability && upgrade.terrains.uniq == [ability.terrain] ? ability.discount : 0
-        total_cost = upgrade.cost - discount
-        total_cost
-      end
-    end
-
     def terrain
       @upgrades.flat_map(&:terrains).uniq
-    end
-
-    def upgrades_to?(other)
-      # correct color progression?
-      return false unless COLORS.index(other.color) == (COLORS.index(@color) + 1)
-
-      # correct label?
-      return false if label != other.label
-
-      # honors existing town/city counts?
-      # - allow labelled cities to upgrade regardless of count; they're probably
-      #   fine (e.g., 18Chesapeake's OO cities merge to one city in brown)
-      # - TODO: account for games that allow double dits to upgrade to one town
-      return false if @towns.size != other.towns.size
-      return false if !label && @cities.size != other.cities.size
-
-      # honors pre-existing track?
-      return false unless paths_are_subset_of?(other.paths)
-
-      true
     end
 
     def paths_are_subset_of?(other_paths)
@@ -275,6 +255,29 @@ module Engine
       end
     end
 
+    def city_town_edges
+      # Returns a list of each edge a city/town goes to
+      ct_edges = Hash.new { |h, k| h[k] = [] }
+      paths.each do |path|
+        next unless (ct = path.city || path.town)
+
+        path.exits.each do |edge|
+          ct_edges[ct] << edge
+        end
+      end
+      ct_edges.values
+    end
+
+    def compute_loc(loc = nil)
+      return nil unless loc && loc != 'center'
+
+      if loc.to_f == loc.to_i.to_f
+        (loc.to_i + @rotation) % 6
+      else
+        (loc.to_i + @rotation) % 6 + 0.5
+      end
+    end
+
     def compute_city_town_edges
       # ct => nums of edges it is connected to
       ct_edges = Hash.new { |h, k| h[k] = [] }
@@ -288,6 +291,17 @@ module Engine
         div = 6 / @cities.size
         @cities.each_with_index { |x, index| edge_count[x] = (index * div) }
         return edge_count
+      end
+
+      # if a tile has exactly one city and no towns, place in center
+      if @cities.one? && @towns.empty? && !compute_loc(@cities.first.loc)
+        ct_edges[@cities.first] = nil
+        return ct_edges
+      end
+      # if a tile has no cities and exactly one town that doesn't have two exits, place in center
+      if @cities.empty? && @towns.one? && (exits.size != 2) && !compute_loc(@towns.first.loc)
+        ct_edges[@towns.first] = nil
+        return ct_edges
       end
 
       # slightly prefer to keep room along bottom to render location name
@@ -312,30 +326,62 @@ module Engine
       # construct the final hash to return, updating edge_count along the
       # way
       ct_edges = ct_edges.map do |ct, edges_|
-        edge = edges_.min_by { |e| edge_count[e] }
+        edge = ct.loc ? compute_loc(ct.loc) : edges_.min_by { |e| edge_count[e] }
 
         # since this edge is being used, increase its count (and that of its
         # neighbors) to influence what edges will be used for the remaining
         # cts
-        edge_count[edge] += 1
-        edge_count[(edge + 1) % 6] += 0.1
-        edge_count[(edge - 1) % 6] += 0.1
+        unless ct.loc
+          edge_count[edge] += 1
+          edge_count[(edge + 1) % 6] += 0.1
+          edge_count[(edge - 1) % 6] += 0.1
+        end
 
         [ct, edge]
       end.to_h
 
-      city_towns = @cities + @towns
-      pathless_cts = city_towns.select { |ct| ct.paths.empty? }
-      if pathless_cts.one? && city_towns.size == 2
+      # take care of city/towns with no paths when there is one other city/town
+      pathless_cts = @city_towns.select { |ct| ct.paths.empty? }
+      if pathless_cts.one? && @city_towns.size == 2
         ct = pathless_cts.first
-        ct_edges[ct] = (ct_edges.values.first + 3) % 6
+        ct_edges[ct] = (ct_edges.values.first + 3) % 6 if ct_edges.values.first
+      end
+
+      # take care of city/towns with no exits
+      exitless_cts = @city_towns.select { |xct| xct.exits.empty? }
+      exitless_cts.select do |xct|
+        ct_edges[xct] = compute_loc(xct.loc) if xct.loc
       end
 
       ct_edges
     end
 
     def revenue_to_render
-      @revenue_to_render ||= stops.map(&:revenue_to_render)
+      @revenue_to_render ||= @stops.map(&:revenue_to_render)
+    end
+
+    # Used to set label for a recently placed tile
+    def label=(label_name)
+      @label = Part::Label.new(label_name)
+    end
+
+    def restore_borders(edges = nil)
+      edges ||= ALL_EDGES
+
+      # Re-add borders that are in the edge list returning those that are missing
+      missing = edges.map do |edge|
+        original = @original_borders.find { |e| e.edge == edge }
+        next unless original
+        next if @borders.include?(original)
+
+        @borders << original
+        edge
+      end.compact
+
+      missing.each do |edge|
+        neighbor = @hex.neighbors[edge]&.tile
+        neighbor&.restore_borders([Hex.invert(edge)])
+      end
     end
 
     private
@@ -346,17 +392,20 @@ module Engine
 
         if part.city?
           @cities << part
+          @city_towns << part
         elsif part.label?
           @label = part
         elsif part.path?
           @paths << part
         elsif part.town?
           @towns << part
+          @city_towns << part
         elsif part.upgrade?
           @upgrades << part
         elsif part.offboard?
           @offboards << part
         elsif part.border?
+          @original_borders << part
           @borders << part
         elsif part.junction?
           @junction = part
@@ -374,10 +423,10 @@ module Engine
         end
       end
 
-      @nodes = @paths.map(&:node).compact.uniq
-      @branches = @paths.map(&:branch).compact.uniq
-      @stops = @paths.map(&:stop).compact.uniq
-      @edges = @paths.flat_map(&:edges).compact.uniq
+      @nodes = @paths.flat_map(&:nodes).uniq
+      @branches = @paths.flat_map(&:branches).uniq
+      @stops = @paths.flat_map(&:stops).uniq
+      @edges = @paths.flat_map(&:edges).uniq
     end
   end
 end

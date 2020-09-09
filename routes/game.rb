@@ -11,7 +11,9 @@ class Api
 
         # '/api/game/<game_id>/'
         r.is do
-          game.to_h(include_actions: true)
+          game_data = game.to_h(include_actions: true, player: user&.name)
+
+          game_data
         end
 
         # POST '/api/game/<game_id>'
@@ -23,6 +25,7 @@ class Api
           # POST '/api/game/<game_id>/join'
           r.is 'join' do
             halt(400, 'Cannot join game because it is full') if users.size >= game.max_players
+            halt(400, 'Cannot join because game has started') unless game.status == 'new'
 
             GameUser.create(game: game, user: user)
             game.players(reload: true)
@@ -32,10 +35,17 @@ class Api
           not_authorized! unless users.any? { |u| u.id == user.id }
 
           r.is 'leave' do
+            halt(400, 'Cannot leave because game has started') unless game.status == 'new'
             game.remove_player(user)
             game.to_h
           end
 
+          # POST '/api/game/<game_id>/user_settings'
+          r.is 'user_settings' do
+            game.update_player_settings(user.name, r.params)
+            game.save
+            game.to_h
+          end
           # POST '/api/game/<game_id>/action'
           r.is 'action' do
             acting, action = nil
@@ -95,16 +105,16 @@ class Api
               end
             end
 
-            type, user_ids =
+            type, user_ids, force =
               if action['type'] == 'message'
                 pinged = users.select do |user|
                   action['message'].include?("@#{user.name}")
                 end
-                ['Received Message', pinged.map(&:id)]
+                ['Received Message', pinged.map(&:id), false]
               elsif game.status == 'finished'
-                ['Game Finished', users.map(&:id)]
+                ['Game Finished', users.map(&:id), true]
               else
-                ['Your Turn', acting.map(&:id)]
+                ['Your Turn', acting.map(&:id), false]
               end
 
             if user_ids.any?
@@ -114,6 +124,7 @@ class Api
                 game_id: game.id,
                 game_url: "#{r.base_url}/game/#{game.id}",
                 type: type,
+                force: force,
               )
             end
 

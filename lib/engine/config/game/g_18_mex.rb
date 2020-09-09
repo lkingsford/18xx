@@ -98,8 +98,52 @@ module Engine
       "470":{
          "count":1,
          "color":"yellow",
-         "code":"junction=lawson:false;town=revenue:20;path=a:0,b:_1;path=a:3,b:_0;path=a:3,b:4;path=a:4,b:_0;path=a:_0,b:_1;label=CC"
-      }
+         "code":"town=revenue:20,loc:0;path=a:0,b:_0;path=a:3,b:_0;path=a:3,b:4;path=a:4,b:_0;label=CC"
+      },
+      "471":1,
+      "472":1,
+      "473":1,
+      "474":1,
+      "475":1,
+      "476":1,
+      "477":1,
+      "478":1,
+      "479MC":{
+         "count":1,
+         "color":"green",
+         "code":"city=revenue:40,slots:2,loc:center;town=revenue:0,loc:2.5;path=a:0,b:_0;path=a:4,b:_0;label=MC"
+      },
+      "479P":{
+         "count":1,
+         "color":"green",
+         "code":"town=revenue:10;path=a:3,b:_0;path=a:_0,b:0;upgrade=cost:40,terrain:mountain;label=P"
+      },
+      "480":1,
+      "481":1,
+      "482":1,
+      "483":1,
+      "484":1,
+      "485MC":{
+         "count":1,
+         "color":"brown",
+         "code":"city=revenue:60,slots:3,loc:center;town=revenue:0,loc:4;path=a:1,b:_0;path=a:2,b:_0;path=a:3,b:_0;path=a:4,b:_0;path=a:5,b:_0;path=a:_1,b:_0;label=MC"
+      },
+      "485P":{
+         "count":1,
+         "color":"brown",
+         "code":"town=revenue:10,loc:0;path=a:0,b:_0;path=a:3,b:_0;path=a:5,b:3;label=P"
+      },
+      "486MC":{
+         "count":1,
+         "color":"brown",
+         "code":"city=revenue:50,slots:4,loc:center;town=revenue:0,loc:4;path=a:1,b:_0;path=a:2,b:_0;path=a:3,b:_0;path=a:4,b:_0;path=a:5,b:_0;path=a:_1,b:_0;label=MC"
+      },
+      "486P":{
+         "count":1,
+         "color":"brown",
+         "code":"town=revenue:10,loc:0;path=a:0,b:_0;path=a:3,b:_0;path=a:5,b:3;label=P"
+      },
+      "619":1
    },
    "market":[
       [
@@ -117,7 +161,7 @@ module Engine
          "150",
          "165",
          "180",
-         "200b"
+         "200e"
       ],
       [
          "55",
@@ -201,8 +245,7 @@ module Engine
          "name":"Mexico City-Acapulco Railroad",
          "value":20,
          "revenue":5,
-         "desc":"No special abilities.",
-         "max_price":30
+         "desc":"No special abilities."
       },
       {
          "sym":"KCMO",
@@ -210,28 +253,75 @@ module Engine
          "value":40,
          "revenue":10,
          "desc":"Owning company may place the Copper Canyan tile in E6 for $60 unless that hex is already built.",
-         "max_price":60
+         "abilities": [
+            {
+              "type": "tile_lay",
+              "discount": 60,
+              "owner_type": "corporation",
+              "tiles": [
+                 "470"
+              ],
+              "hexes": [
+                "E6"
+              ],
+              "count": 1,
+              "when": "track"
+            }
+        ]
       },
       {
-         "sym":"IR",
+         "sym":"A",
          "name":"Interoceanic Railroad",
          "value":50,
          "revenue":0,
-         "desc":"Minor company. Begins in Tampico (L13). Once closed owner receives a 5% share in NdM."
+         "desc":"Minor company A. Begins in Tampico (M12). Once closed owner receives a 5% share in NdM.",
+         "abilities": [
+            {
+              "type": "no_buy",
+              "owner_type": "player"
+            },
+            {
+               "type": "close",
+               "when": "3½",
+               "owner_type": "player"
+            }
+         ]
       },
       {
-         "sym":"SBCR",
+         "sym":"B",
          "name":"Sonora-Baja California Railway",
          "value":50,
          "revenue":0,
-         "desc":"Minor company. Begins in Mazatlán (F11). Once closed owner receives a 5% share in NdM."
+         "desc":"Minor company B. Begins in Mazatlán (K6). Once closed owner receives a 5% share in NdM.",
+         "abilities": [
+            {
+              "type": "no_buy",
+              "owner_type": "player"
+            },
+            {
+               "type": "close",
+               "when": "3½",
+               "owner_type": "player"
+            }
+         ]
       },
       {
-         "sym":"SR",
+         "sym":"C",
          "name":"Southeastern Railway",
          "value":50,
          "revenue":0,
-         "desc":"Minor company. Begins in Oaxaca (L19). Once closed owner receives a 10% share in UdY."
+         "desc":"Minor company C. Begins in Oaxaca (S12). Once closed owner receives a 10% share in UdY.",
+         "abilities": [
+            {
+              "type": "no_buy",
+              "owner_type": "player"
+            },
+            {
+               "type": "close",
+               "when": "3½",
+               "owner_type": "player"
+            }
+         ]
       },
       {
          "sym":"MIR",
@@ -239,11 +329,10 @@ module Engine
          "value":100,
          "revenue":20,
          "desc":"Comes with a 10% share of the Chihuahua Pacific Railway (CHI).",
-         "max_price":150,
          "abilities":[
             {
                "type":"share",
-               "share":"UdY_1"
+               "share":"CHI_1"
             },
             {
                "type":"blocks_hexes",
@@ -426,8 +515,7 @@ module Engine
             {
                "nodes":[
                   "city",
-                  "offboard",
-                  "town"
+                  "offboard"
                ],
                "pay":2,
                "visit":2
@@ -450,8 +538,7 @@ module Engine
             {
                "nodes":[
                   "city",
-                  "offboard",
-                  "town"
+                  "offboard"
                ],
                "pay":3,
                "visit":3
@@ -465,8 +552,34 @@ module Engine
             }
          ],
          "price":180,
-         "num":6,
+         "num":4,
          "rusts_on":"6"
+      },
+      {
+         "name":"3½",
+         "distance":[
+            {
+               "nodes":[
+                  "city",
+                  "offboard"
+               ],
+               "pay":3,
+               "visit":3
+            },
+            {
+               "nodes":[
+                  "town"
+               ],
+               "pay":99,
+               "visit":99
+            }
+         ],
+         "price":180,
+         "num":2,
+         "rusts_on":"6",
+         "events":[
+            {"type": "minors_closed"}
+          ]
       },
       {
          "name":"4",
@@ -474,8 +587,7 @@ module Engine
             {
                "nodes":[
                   "city",
-                  "offboard",
-                  "town"
+                  "offboard"
                ],
                "pay":4,
                "visit":4
@@ -490,7 +602,7 @@ module Engine
          ],
          "price":300,
          "num":3,
-         "rusts_on":"4D"
+         "rusts_on":"6½"
       },
       {
          "name":"5",
@@ -498,8 +610,7 @@ module Engine
             {
                "nodes":[
                   "city",
-                  "offboard",
-                  "town"
+                  "offboard"
                ],
                "pay":5,
                "visit":5
@@ -513,7 +624,11 @@ module Engine
             }
          ],
          "price":450,
-         "num":2
+         "num":2,
+         "events":[
+           {"type": "close_companies"},
+           {"type": "ndm_merger"}
+         ]
       },
       {
          "name":"6",
@@ -521,8 +636,7 @@ module Engine
             {
                "nodes":[
                   "city",
-                  "offboard",
-                  "town"
+                  "offboard"
                ],
                "pay":6,
                "visit":6
@@ -536,7 +650,29 @@ module Engine
             }
          ],
          "price":600,
-         "num":2
+         "num":1
+      },
+      {
+         "name":"6½",
+         "distance":[
+            {
+               "nodes":[
+                  "city",
+                  "offboard"
+               ],
+               "pay":6,
+               "visit":6
+            },
+            {
+               "nodes":[
+                  "town"
+               ],
+               "pay":99,
+               "visit":99
+            }
+         ],
+         "price":600,
+         "num":1
       },
       {
          "name":"4D",
@@ -544,8 +680,7 @@ module Engine
             {
                "nodes":[
                   "city",
-                  "offboard",
-                  "town"
+                  "offboard"
                ],
                "pay":4,
                "visit":4
@@ -570,7 +705,7 @@ module Engine
          "offboard=revenue:yellow_30|brown_50;path=a:5,b:_0":[
             "B1"
          ],
-         "city=revenue:yellow_10|brown_50;path=a:1,b:_0;path=a:2,b:_0":[
+         "city=revenue:yellow_10|brown_50;path=a:1,b:_0,terminal:1;path=a:2,b:_0,terminal:1":[
             "Q14"
          ],
          "offboard=revenue:yellow_30|brown_40;path=a:2,b:_0":[
@@ -604,19 +739,27 @@ module Engine
             "I6",
             "N9",
             "P9",
-            "F5",
-            "Q10",
+            "F5"
+         ],
+         "upgrade=cost:120,terrain:mountain;border=edge:4,type:impassable":[
+            "Q10"
+         ],
+         "upgrade=cost:120,terrain:mountain;border=edge:3,type:impassable":[
             "R11"
          ],
          "upgrade=cost:60,terrain:mountain":[
             "C2",
             "L11",
             "Q8",
-            "Q12",
-            "N11",
+            "Q12"
+         ],
+         "upgrade=cost:60,terrain:mountain;border=edge:0,type:impassable;border=edge:1,type:impassable":[
+            "N11"
+         ],
+         "upgrade=cost:60,terrain:mountain;border=edge:5,type:impassable":[
             "O12"
          ],
-         "upgrade=cost:20,terrain:mountain":[
+         "upgrade=cost:20,terrain:desert":[
             "E2",
             "C6",
             "D5",
@@ -653,7 +796,7 @@ module Engine
             "I4",
             "O8"
          ],
-         "upgrade=cost:40,terrain:water":[
+         "upgrade=cost:40,terrain:swamp":[
             "G12",
             "K12"
          ],
@@ -669,16 +812,16 @@ module Engine
          "town=revenue:0;upgrade=cost:60,terrain:mountain":[
             "J7"
          ],
-         "town=revenue:0;upgrade=cost:20,terrain:mountain":[
+         "town=revenue:0;upgrade=cost:20,terrain:desert":[
             "K8"
          ],
-         "city=revenue:20;path=a:1,b:_0;upgrade=cost:20,terrain:water":[
+         "city=revenue:20,loc:center;town=revenue:10,loc:1;path=a:_1,b:_0;upgrade=cost:20,terrain:water;label=M":[
             "K6"
          ],
-         "city=revenue:20;path=a:4,b:_0;upgrade=cost:40,terrain:water":[
+         "city=revenue:20,loc:center;town=revenue:10,loc:4;path=a:_0,b:_1;upgrade=cost:40,terrain:swamp;label=T":[
             "M12"
          ],
-         "city=revenue:0;upgrade=cost:40,terrain:water":[
+         "city=revenue:0,loc:center;town=revenue:0,loc:5;upgrade=cost:40,terrain:swamp;label=V":[
             "P13"
          ],
          "town=revenue:0;upgrade=cost:120,terrain:mountain":[
@@ -692,10 +835,10 @@ module Engine
          "city=revenue:20;path=a:0,b:_0;path=a:1,b:_0;path=a:3,b:_0":[
             "E6"
          ],
-         "city=revenue:20;path=a:3,b:_0;path=a:5,b:_0":[
+         "city=revenue:20,loc:center;town=revenue:0,loc:2;path=a:3,b:_0;path=a:5,b:_0;label=MC":[
             "O10"
          ],
-         "town=revenue:10;path=a:2,b:_0;path=a:_0,b:5;upgrade=cost:60,terrain:mountain":[
+         "town=revenue:10;path=a:2,b:_0;path=a:_0,b:5;upgrade=cost:60,terrain:mountain;label=P":[
             "P11"
          ],
          "path=a:1,b:4;upgrade=cost:60,terrain:mountain":[
@@ -710,56 +853,110 @@ module Engine
          "tiles":[
             "yellow"
          ],
-         "buy_companies":true
+         "status":[
+            "limited_train_buy"
+         ],
+         "operating_rounds": 1
       },
       {
          "name":"3",
+         "on":"3",
          "train_limit":3,
          "tiles":[
             "yellow",
             "green"
          ],
-         "buy_companies":true
+         "status":[
+            "can_buy_companies",
+            "limited_train_buy"
+         ],
+         "operating_rounds": 2
+      },
+      {
+         "name":"3½",
+         "on":"3½",
+         "train_limit":3,
+         "tiles":[
+            "yellow",
+            "green"
+         ],
+         "status":[
+            "can_buy_companies",
+            "limited_train_buy",
+            "ndm_available"
+         ],
+         "operating_rounds": 2
       },
       {
          "name":"4",
-         "train_limit":3,
+         "on":"4",
+         "train_limit":2,
          "tiles":[
             "yellow",
             "green"
          ],
-         "buy_companies":true
+         "status":[
+            "can_buy_companies",
+            "ndm_available"
+         ],
+         "operating_rounds": 2
       },
       {
          "name":"5",
-         "train_limit":3,
+         "on":"5",
+         "train_limit":2,
          "tiles":[
             "yellow",
             "green",
             "brown"
          ],
-         "events":{
-            "close_companies":true
-         }
+         "status":[
+            "ndm_available"
+         ],
+         "operating_rounds": 3
       },
       {
          "name":"6",
-         "train_limit":3,
+         "on":"6",
+         "train_limit":2,
          "tiles":[
             "yellow",
             "green",
             "brown"
-         ]
+         ],
+         "status":[
+            "ndm_available"
+         ],
+         "operating_rounds": 3
+      },
+      {
+         "name":"6½",
+         "on":"6½",
+         "train_limit":2,
+         "tiles":[
+            "yellow",
+            "green",
+            "brown"
+         ],
+         "status":[
+            "ndm_available"
+         ],
+         "operating_rounds": 3
       },
       {
          "name":"4D",
-         "train_limit":3,
+         "on":"4D",
+         "train_limit":2,
          "tiles":[
             "yellow",
             "green",
             "brown",
             "gray"
-         ]
+         ],
+         "status":[
+            "ndm_available"
+         ],
+         "operating_rounds": 3
       }
    ]
 }

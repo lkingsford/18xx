@@ -25,13 +25,16 @@ module View
       def should_render_revenue?
         revenue = @tile.revenue_to_render
 
+        # special case: city with multi-revenue - no choice but to draw separate revenue
+        return true if revenue.any? { |r| !r.is_a?(Numeric) }
+
         return false if revenue.empty?
 
-        return false if revenue.first.is_a?(Numeric) && (@tile.cities + @tile.towns).one?
+        return false if revenue.first.is_a?(Numeric) && @tile.city_towns.one?
 
         return false if revenue.uniq.size > 1
 
-        return false if @tile.cities.sum(&:slots) < 3 && @tile.stops.size == 2
+        return false if @tile.cities.sum(&:slots) < 3 && @tile.city_towns.size == 2
 
         true
       end
@@ -45,10 +48,11 @@ module View
         children = []
 
         render_revenue = should_render_revenue?
-        children << render_tile_part(Part::Track, routes: @routes) if @tile.exits.any?
+        children << render_tile_part(Part::Track, routes: @routes) if @tile.paths.any?
         children << render_tile_part(Part::Cities, show_revenue: !render_revenue) if @tile.cities.any?
         children << render_tile_part(Part::Towns, routes: @routes) if @tile.towns.any?
 
+        borders = render_tile_part(Part::Borders) if @tile.borders.any?
         # OO tiles have different rules...
         rendered_loc_name = render_tile_part(Part::LocationName) if @tile.location_name && @tile.cities.size > 1
 
@@ -61,8 +65,9 @@ module View
         @tile.reservations.each { |x| children << render_tile_part(Part::Reservation, reservation: x) }
         children << render_tile_part(Part::Icons) if @tile.icons.any?
 
+        children << render_tile_part(Part::Assignments) if @tile.hex.assignments.any?
         # borders should always be the top layer
-        children << h(Part::Borders, tile: @tile) if @tile.borders.any?
+        children << borders if borders
 
         children << rendered_loc_name if rendered_loc_name
 

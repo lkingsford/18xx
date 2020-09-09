@@ -7,7 +7,9 @@ module Engine
     class Message < Base
       ACTIONS = %w[message].freeze
 
-      def actions(_entity)
+      def actions(entity)
+        return [] unless entity.player?
+
         ACTIONS
       end
 
@@ -15,8 +17,10 @@ module Engine
         @log << action
       end
 
-      def blocking?
-        false
+      def skip!; end
+
+      def blocks?
+        @game.finished
       end
     end
   end

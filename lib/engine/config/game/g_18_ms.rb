@@ -11,7 +11,7 @@ module Engine
    "filename":"18_ms",
    "modulename":"18MS",
    "currencyFormatStr":"$%d",
-   "bankCash":6000,
+   "bankCash":10000,
    "certLimit":{
       "2":20,
       "3":14,
@@ -41,6 +41,7 @@ module Engine
       "E5":"Meridian",
       "E9":"Selma",
       "E11":"Montgomery",
+      "E13":"Atlanta",
       "G3":"Hattiesburg",
       "H4":"Gulfport",
       "H6":"Mobile",
@@ -49,14 +50,13 @@ module Engine
       "I1":"New Orleans"
    },
    "tiles":{
-      "1":1,
       "3":3,
       "4":3,
       "5":2,
       "6":3,
       "7":4,
-      "8":9,
-      "9":9,
+      "8":10,
+      "9":10,
       "57":3,
       "58":3,
       "14":3,
@@ -87,13 +87,13 @@ module Engine
       "63":4,
       "446":{
          "count":1,
-         "color":"brown",
-         "code":"city=revenue:50,slots:3;path=a:0,b:_0;path=a:1,b:_0;path=a:2,b:_0;path=a:3,b:_0"
-      },
-      "X31":{
-         "count":1,
          "color":"gray",
-         "code":"city=revenue:70,slots:3;path=a:0,b:_0;path=a:1,b:_0;path=a:2,b:_0;path=a:3,b:_0;path=a:4,b:_0;path=a:5,b:_0"
+         "code":"city=revenue:70,slots:3;path=a:0,b:_0;path=a:1,b:_0;path=a:2,b:_0;path=a:3,b:_0;path=a:4,b:_0;path=a:5,b:_0;label=BM"
+      },
+      "X31b":{
+         "count":1,
+         "color":"brown",
+         "code":"city=revenue:50,slots:3;path=a:0,b:_0;path=a:1,b:_0;path=a:2,b:_0;path=a:3,b:_0;label=Mob"
       }
    },
    "market":[
@@ -178,13 +178,23 @@ module Engine
          "value":50,
          "revenue":15,
          "desc":"The owning Major Company may lay their cheapest available token for half price. This is not an extra token placement. This ability can only be used once, and using it does not close the private company.",
-         "sym":"M&M"
+         "sym":"M&M",
+         "abilities": [
+            {
+              "type": "token",
+              "owner_type":"corporation",
+              "hexes": [],
+              "discount": 0.5,
+              "count": 1,
+              "from_owner": true
+            }
+         ]
       },
       {
          "name":"Mississippi Central Railway",
          "value":60,
          "revenue":5,
-         "desc":"Converts to a 2+ train with no salvage value when placed in a Major Company.",
+         "desc":"Converts to a 2+ train that cannot be salvaged when placed in a Major Company.",
          "sym":"MC"
       },
       {
@@ -192,12 +202,26 @@ module Engine
          "value":70,
          "revenue":5,
          "desc":"The owning Major Company may purchase an available 3+ Train or 4+ Train from the bank for a discount of $100, which closes this Private Company. This purchase is subject to the normal rules governing train purchases - only during the train-buying step and train limits.",
-         "sym":"M&O"
+         "sym":"M&O",
+         "abilities": [
+            {
+              "type": "train_discount",
+              "discount": 100,
+              "owner_type": "corporation",
+              "trains": [
+                 "3+",
+                 "4+"
+              ],
+              "count": 1,
+              "when": "train"
+            }
+         ]
       }
    ],
    "corporations":[
       {
          "float_percent":60,
+         "max_ownership_percent":70,
          "sym":"GMO",
          "name":"Gulf, Mobile and Ohio Railroad",
          "logo":"18_ms/GMO",
@@ -212,6 +236,7 @@ module Engine
       },
       {
          "float_percent":60,
+         "max_ownership_percent":70,
          "sym":"IC",
          "name":"Illinois Central Railroad",
          "logo":"18_ms/IC",
@@ -225,6 +250,7 @@ module Engine
       },
       {
          "float_percent":60,
+         "max_ownership_percent":70,
          "sym":"L&N",
          "name":"Louisville and Nashville Railroad",
          "logo":"18_ms/LN",
@@ -238,6 +264,7 @@ module Engine
       },
       {
          "float_percent":60,
+         "max_ownership_percent":70,
          "sym":"Fr",
          "name":"Frisco",
          "logo":"18_ms/Fr",
@@ -251,6 +278,7 @@ module Engine
       },
       {
          "float_percent":60,
+         "max_ownership_percent":70,
          "sym":"WRA",
          "name":"Western Railway of Alabama",
          "logo":"18_ms/WRA",
@@ -271,8 +299,7 @@ module Engine
             {
                "nodes":[
                   "city",
-                  "offboard",
-                  "town"
+                  "offboard"
                ],
                "pay":2,
                "visit":2
@@ -286,7 +313,7 @@ module Engine
             }
          ],
          "price":80,
-         "num":4
+         "num":5
       },
       {
          "name":"3+",
@@ -294,8 +321,7 @@ module Engine
             {
                "nodes":[
                   "city",
-                  "offboard",
-                  "town"
+                  "offboard"
                ],
                "pay":3,
                "visit":3
@@ -317,8 +343,7 @@ module Engine
             {
                "nodes":[
                   "city",
-                  "offboard",
-                  "town"
+                  "offboard"
                ],
                "pay":4,
                "visit":4
@@ -344,7 +369,11 @@ module Engine
          "name":"6",
          "distance":6,
          "price":550,
-         "num":2
+         "num":2,
+         "events":[
+           {"type": "close_companies"},
+           {"type": "remove_tokens"}
+         ]
       },
       {
          "name":"2D",
@@ -355,19 +384,15 @@ module Engine
          "variants":[
             {
                "name":"4D",
-               "distance":[
-                  {
-                     "distance":4,
-                     "price":750,
-                     "available_on":"6"
-                  }
-               ]
+               "price":750,
+               "available_on":"6",
+               "distance":4
             }
          ]
       },
       {
          "name":"5D",
-         "distance":8,
+         "distance":5,
          "price":850,
          "num":1,
          "available_on":"6"
@@ -425,7 +450,7 @@ module Engine
          ]
       },
       "red":{
-         "offboard=revenue:yellow_40|brown_60;path=a:1,b:_0":[
+         "offboard=revenue:yellow_40|brown_60;path=a:1,b:_0;icon=image:18_ms/coins":[
             "B12"
          ],
          "offboard=revenue:yellow_30|brown_50;path=a:1,b:_0":[
@@ -434,19 +459,19 @@ module Engine
          "city=revenue:yellow_40|brown_50;path=a:5,b:_0;path=a:4,b:_0":[
             "A1"
          ],
-         "city=revenue:yellow_51|brown_50;path=a:3,b:_0;path=a:4,b:_0":[
+         "city=revenue:yellow_50|brown_80,loc:center;town=revenue:10,loc:5.5;path=a:3,b:_0;path=a:_1,b:_0;icon=image:18_ms/coins":[
             "I1"
-         ],
-         "town=revenue:10":[
-            "I3"
          ],
          "path=a:1,b:5":[
             "A3"
          ],
-         "path=a:0,b:5":[
+         "offboard=revenue:yellow_40|brown_50,hide:1,groups:Atlanta;path=a:0,b:_0;border=edge:5":[
             "D12"
          ],
-         "path=a:2,b:3":[
+         "offboard=revenue:yellow_40|brown_50,groups:Atlanta;path=a:1,b:_0;border=edge:2;border=edge:0":[
+            "E13"
+         ],
+         "offboard=revenue:yellow_40|brown_50,hide:1,groups:Atlanta;path=a:2,b:_0;border=edge:3":[
             "F12"
          ]
       },
@@ -464,43 +489,21 @@ module Engine
             "yellow"
          ],
          "operating_rounds":2,
-         "buy_companies":true
+         "status":[
+            "can_buy_companies_operation_round_one"
+         ]
       },
       {
          "name":"3",
-         "on":"3",
          "train_limit":3,
          "tiles":[
             "yellow",
             "green"
          ],
          "operating_rounds":2,
-         "buy_companies":true
-      },
-      {
-         "name":"4",
-         "on":"4",
-         "train_limit":3,
-         "tiles":[
-            "yellow",
-            "green"
-         ],
-         "operating_rounds":2,
-         "buy_companies":true
-      },
-      {
-         "name":"5",
-         "on":"5",
-         "train_limit":3,
-         "tiles":[
-            "yellow",
-            "green",
-            "brown"
-         ],
-         "operating_rounds":2,
-         "events":{
-            "close_companies":true
-         }
+         "status":[
+            "can_buy_companies"
+         ]
       },
       {
          "name":"6",

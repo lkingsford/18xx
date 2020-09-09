@@ -13,6 +13,14 @@ module View
         base.needs :connection, store: true, default: nil
         base.needs :user, store: true, default: nil
         base.needs :tile_selector, default: nil, store: true
+        base.needs :selected_company, default: nil, store: true
+      end
+
+      def save_user_settings(settings)
+        @connection.safe_post("/game/#{@game_data['id']}/user_settings", settings)
+
+        @game_data['user_settings'] ||= {}
+        @game_data['user_settings'].merge!(settings)
       end
 
       def process_action(action)
@@ -66,12 +74,17 @@ module View
           )
         end
 
-        store(:tile_selector, nil, skip: true)
+        clear_ui_state
         store(:game, game)
       rescue StandardError => e
         store(:game, @game.clone(@game.actions), skip: true)
         store(:flash_opts, e.message)
         e.backtrace.each { |line| puts line }
+      end
+
+      def clear_ui_state
+        store(:selected_company, nil, skip: true)
+        store(:tile_selector, nil, skip: true)
       end
     end
   end

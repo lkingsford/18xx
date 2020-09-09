@@ -347,7 +347,7 @@ module Engine
       "name": "Baltimore & Ohio Railroad",
       "value": 100,
       "revenue": 0,
-      "desc": "Purchasing player immediately takes a 10% share of the B&O (This does not close the private company). This private company has no other special ability.",
+      "desc": "Purchasing player immediately takes a 10% share of the B&O. This does not close the private company. This private company has no other special ability.",
       "sym": "B&OR",
       "abilities": [
         {
@@ -507,7 +507,10 @@ module Engine
       "name": "5",
       "distance": 5,
       "price": 500,
-      "num": 3
+      "num": 3,
+      "events":[
+        {"type": "close_companies"}
+      ]
     },
     {
       "name": "6",
@@ -669,7 +672,9 @@ module Engine
         "green"
       ],
       "operating_rounds": 2,
-      "buy_companies": true
+      "status":[
+        "can_buy_companies"
+      ]
     },
     {
       "name": "4",
@@ -680,7 +685,9 @@ module Engine
         "green"
       ],
       "operating_rounds": 2,
-      "buy_companies": true
+      "status":[
+        "can_buy_companies"
+      ]
     },
     {
       "name": "5",
@@ -691,10 +698,7 @@ module Engine
         "green",
         "brown"
       ],
-      "operating_rounds": 3,
-      "events": {
-        "close_companies": true
-      }
+      "operating_rounds": 3
     },
     {
       "name": "6",

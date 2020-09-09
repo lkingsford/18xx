@@ -12,7 +12,7 @@ module Engine
 {
    "filename":"1836Jr30",
    "modulename":"1836Jr-30",
-   "currencyFormatStr":"F%d",
+   "currencyFormatStr":"%d F",
    "bankCash":6000,
    "certLimit":{
       "2":20,
@@ -502,7 +502,10 @@ module Engine
          "name":"5",
          "distance":5,
          "price":450,
-         "num":2
+         "num":2,
+         "events": [
+           {"type": "close_companies"}
+         ]
       },
       {
          "name":"6",
@@ -629,13 +632,13 @@ module Engine
          ]
       },
       "blue":{
-         "offboard=revenue:yellow_20|brown_30,groups:port;path=a:4,b:_0;path=a:5,b:_0":[
+         "offboard=revenue:green_20|brown_30,format:+%d,groups:port,route:never;path=a:4,b:_0;path=a:5,b:_0":[
             "E3",
             "G1"
          ]
       },
       "green":{
-         "offboard=revenue:yellow_20|brown_30,groups:port;path=a:3,b:_0;path=a:4,b:_0":[
+         "offboard=revenue:green_20|brown_30,format:+%d,groups:port,route:never;path=a:3,b:_0;path=a:4,b:_0":[
             "J2"
          ]
       }
@@ -658,7 +661,9 @@ module Engine
         "green"
       ],
       "operating_rounds": 2,
-      "buy_companies": true
+      "status":[
+         "can_buy_companies"
+      ]
     },
     {
       "name": "4",
@@ -669,7 +674,9 @@ module Engine
         "green"
       ],
       "operating_rounds": 2,
-      "buy_companies": true
+      "status":[
+         "can_buy_companies"
+      ]
     },
     {
       "name": "5",
@@ -680,10 +687,7 @@ module Engine
         "green",
         "brown"
       ],
-      "operating_rounds": 3,
-      "events": {
-        "close_companies": true
-      }
+      "operating_rounds": 3
     },
     {
       "name": "6",

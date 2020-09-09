@@ -14,9 +14,9 @@ module View
         def preferred_render_locations
           return [l_center, l_up24, l_down24] if @tile.offboards.any?
 
-          return [l_center, l_up40, l_down40] if @tile.towns.one?
+          return [l_center, l_up40, l_down40] if @tile.towns.one? && @tile.cities.empty?
 
-          if @tile.cities.one?
+          if @tile.cities.one? && @tile.towns.empty?
             return case @tile.cities.first.slots
                    when 3
                      [l_down50, l_top]
@@ -42,9 +42,9 @@ module View
               end
             end
 
-            return [center, l_bottom, l_top] if @tile.exits.any?
+            return [center, l_up40, l_down40] if @tile.exits.empty? && @tile.cities.empty?
 
-            return [center, l_up40, l_down40]
+            return [center, l_up40, l_down40, l_bottom, l_top]
           end
 
           []
@@ -62,7 +62,7 @@ module View
 
           rendered_name = @name_segments.map.with_index do |segment, index|
             x = 0
-            y = index * LINE_HEIGHT
+            y = index * LINE_HEIGHT + 1
             h(:text, { attrs: { transform: "translate(#{x} #{y})" } }, segment)
           end
 
@@ -152,16 +152,28 @@ module View
         private
 
         def l_top
-          y = @name_segments.size > 1 ? 54 : 61
-          {
-            region_weights_in: {
-              TRACK_TO_EDGE_3 => 1,
-              TOP_ROW => 2,
-            },
-            region_weights_out: { TOP_ROW => 1 },
-            x: 0,
-            y: -(y + delta_y),
-          }
+          if layout == :flat
+            y = @name_segments.size > 1 ? 54 : 61
+            {
+             region_weights_in: {
+               TRACK_TO_EDGE_3 => 1,
+               TOP_ROW => 2,
+             },
+             region_weights_out: { TOP_ROW => 1 },
+             x: 0,
+             y: -(y + delta_y),
+            }
+          elsif layout == :pointy
+            y = @name_segments.size > 1 ? 63 : 70
+            {
+             region_weights: {
+               [0, 1] => 1,
+               [2, 3, 5, 6] => 0.5,
+             },
+             x: 0,
+             y: -(y + delta_y),
+            }
+          end
         end
 
         def l_up40
@@ -255,13 +267,20 @@ module View
           y = if @name_segments.size > 1
                 39
               else
-                56
+                layout == :flat ? 56 : 65
               end
 
           loc = { x: 0, y: y + delta_y }
 
-          loc[:region_weights_in] = { TRACK_TO_EDGE_0 => 1, BOTTOM_ROW => 1.5 }
-          loc[:region_weights_out] = { BOTTOM_ROW => 1 }
+          if layout == :flat
+            loc[:region_weights_in] = { TRACK_TO_EDGE_0 => 1, BOTTOM_ROW => 1.5 }
+            loc[:region_weights_out] = { BOTTOM_ROW => 1 }
+          elsif layout == :pointy
+            loc[:region_weights] = {
+              [22, 23] => 1,
+              [17, 18, 20, 21] => 0.5,
+            }
+          end
           loc
         end
       end

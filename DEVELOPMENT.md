@@ -3,6 +3,8 @@
 See [`TILES.md`](/TILES.md) for some details and useful routes for tile
 development.
 
+See [Developing on Windows](https://github.com/tobymao/18xx/wiki/Developing-For-18xx.games#developing-on-windows) to get setup on Windows
+
 ### Droplet configuration
 
 If configuring the droplet from scratch, these are the requirements:
@@ -82,5 +84,7 @@ Run `docker-compose exec rack rake` while a docker instance is running to run ru
 
 Run `docker-compose exec rack rake stackprof[spec/fixtures/18_chesapeake/1277.json]` (or other file) to load and process the json file 1000 times. This will generate a stackprof.dump which can be further analyzed
 
+```
 stackprof --d3-flamegraph stackprof.dump >stackprof.html
 stackprof stackprof.dump
+```

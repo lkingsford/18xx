@@ -40,6 +40,7 @@ module Engine
     "C9": "South Bend",
     "C15": "Detroit",
     "C17": "Windsor",
+    "D6": "Chicago",
     "D14": "Toledo",
     "D20": "Erie",
     "D22": "Buffalo",
@@ -116,7 +117,7 @@ module Engine
   },
   "market": [
     [
-      "0blk",
+      "0c",
       "10",
       "20",
       "30",
@@ -176,19 +177,18 @@ module Engine
         {
           "type": "token",
           "owner_type":"corporation",
-          "when": "sold",
           "hexes": [
             "D6"
           ],
           "price": 0,
           "teleport_price": 0,
+          "count": 1,
           "extra": true
         },
         {
           "type": "reservation",
           "hex": "D6",
-          "city": 3,
-          "when": "sold"
+          "city": 3
         }
       ]
     },
@@ -225,7 +225,7 @@ module Engine
       "name": "Meat Packing Company",
       "value": 60,
       "revenue": 15,
-      "desc": "The owning corporation may place a $30 marker in either St. Louis (I1) or Chicago (D6), to add $30 to all routes run to this location.",
+      "desc": "The owning corporation may assign the Meat Packing Company to either St. Louis (I1) or Chicago (D6), to add $30 to all routes it runs to this location.",
       "sym": "MPC",
       "abilities": [
         {
@@ -234,7 +234,6 @@ module Engine
             "I1",
             "D6"
           ],
-          "when": "sold",
           "count": 1,
           "owner_type": "corporation"
         },
@@ -250,7 +249,7 @@ module Engine
       "name": "Steamboat Company",
       "value": 40,
       "revenue": 10,
-      "desc": "Place or shift the port marker among port locations (B8, C5, D14, G19, I1). Add $20 per port symbol to all routes run to this location by the owning (or assigned) company.",
+      "desc": "At the beginning of each Operating Round, the owning player may assign the Steamboat Company to a corporation/minor and to a port location (B8, C5, D14, G19, I1). Once per Operating Round, the owning corporation may assign the Steamboat Company to a port location. Add $20 per port symbol to all routes run to the assigned location by the owning/assigned corporation/minor.",
       "sym": "SC",
       "abilities": [
         {
@@ -262,11 +261,31 @@ module Engine
             "I1",
             "G19"
           ],
-          "count": 1
+          "count_per_or": 1,
+          "owner_type": "player"
         },
         {
           "type": "assign_corporation",
-          "count": 1
+          "count_per_or": 1,
+          "owner_type": "player"
+        },
+        {
+          "type": "assign_hexes",
+          "hexes": [
+            "B8",
+            "C5",
+            "D14",
+            "I1",
+            "G19"
+          ],
+          "count_per_or": 1,
+          "owner_type": "corporation"
+        },
+        {
+          "type": "assign_corporation",
+          "when": "sold",
+          "count": 1,
+          "owner_type": "corporation"
         }
       ]
     },
@@ -293,6 +312,7 @@ module Engine
               "295",
               "296"
             ],
+           "special": false,
            "when":"track",
            "count": 1
         }
@@ -327,6 +347,7 @@ module Engine
               "9"
             ],
            "when":"track",
+           "blocks":false,
            "count": 2
         }
       ]
@@ -360,6 +381,7 @@ module Engine
               "9"
             ],
            "when":"track",
+           "blocks": false,
            "count": 2
         }
       ]
@@ -401,6 +423,7 @@ module Engine
       "abilities": [
         {
           "type": "token",
+          "description": "Reserved $40/$60 Ft. Wayne token",
           "hexes": [
             "E11"
           ],
@@ -446,10 +469,12 @@ module Engine
       "abilities": [
         {
           "type": "token",
+          "description": "Reserved $40/$100 Cincinnati token",
           "hexes": [
             "H12"
           ],
           "price": 40,
+          "count": 1,
           "teleport_price": 100
         },
         {
@@ -492,9 +517,11 @@ module Engine
       "abilities": [
         {
           "type": "token",
+          "description": "Reserved $40 Erie token",
           "hexes": [
             "D20"
           ],
+          "count": 1,
           "price": 40
         },
         {
@@ -538,6 +565,7 @@ module Engine
          {
             "type":"tile_lay",
             "free":true,
+            "description": "Free tile lay: E5, F6, G5, H6, J4",
             "hexes":[
                "E5",
                "F6",
@@ -553,9 +581,11 @@ module Engine
         },
         {
           "type": "token",
+          "description": "Reserved $40 Centralia token",
           "hexes": [
             "I5"
           ],
+          "count": 1,
           "price": 40
         },
         {
@@ -612,6 +642,9 @@ module Engine
            ],
            "price": 450
          }
+      ],
+      "events": [
+        {"type": "close_companies"}
       ]
     },
     {
@@ -631,7 +664,10 @@ module Engine
           "price": 900
         }
       ],
-      "num": 9
+      "num": 9,
+      "events": [
+        {"type": "remove_tokens"}
+      ]
     }
   ],
   "hexes": {
@@ -767,7 +803,7 @@ module Engine
       "offboard=revenue:yellow_30|brown_70,hide:1,groups:E;icon=image:1846/20;path=a:1,b:_0;border=edge:0": [
         "F22"
       ],
-      "offboard=revenue:yellow_30|brown_70,groups:E;icon=image:1846/20;path=a:1,b:_0;path=a:2,b:_0;label=E;border=edge:3": [
+      "offboard=revenue:yellow_30|brown_70,groups:E;border=edge:1,type:mountain,cost:20;icon=image:1846/20;path=a:1,b:_0;path=a:2,b:_0;label=E;border=edge:3": [
         "G21"
       ],
       "offboard=revenue:yellow_20|brown_40,groups:E;icon=image:1846/30;path=a:2,b:_0;label=E": [
@@ -809,7 +845,9 @@ module Engine
         "yellow"
       ],
       "operating_rounds": 2,
-      "buy_companies": true
+      "status":[
+        "can_buy_companies"
+      ]
     },
     {
       "name": "2",
@@ -820,7 +858,9 @@ module Engine
         "green"
       ],
       "operating_rounds": 2,
-      "buy_companies": true
+      "status":[
+        "can_buy_companies"
+      ]
     },
     {
       "name": "3",
@@ -831,10 +871,7 @@ module Engine
         "green",
         "brown"
       ],
-      "operating_rounds": 2,
-      "events": {
-        "close_companies": true
-      }
+      "operating_rounds": 2
     },
     {
       "name": "4",
@@ -846,10 +883,7 @@ module Engine
         "brown",
         "gray"
       ],
-      "operating_rounds": 2,
-      "events": {
-        "remove_tokens": true
-      }
+      "operating_rounds": 2
     }
   ]
 }
